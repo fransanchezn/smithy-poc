@@ -24,6 +24,11 @@ operation ListUsers {
         @required
         users: UserList
     }
+
+    errors: [
+        AccountSuspendedDomainError
+        MissingValueValidationError
+    ]
 }
 
 // Get a user by ID
@@ -44,6 +49,8 @@ operation GetUser {
     errors: [
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
     ]
 }
 
@@ -62,6 +69,13 @@ operation CreateUser {
         @required
         user: User
     }
+
+    errors: [
+        AccountSuspendedDomainError
+        TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
+    ]
 }
 
 // Delete a user
@@ -77,6 +91,8 @@ operation DeleteUser {
     errors: [
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
     ]
 }
 
@@ -193,5 +209,113 @@ structure AccountSuspendedAttributes {
     @required
     reason: String
 }
+
 // --------- Validation Error ---------
-// --------- Endpoint Errors ---------
+@trait
+structure validationError {}
+
+/// Base mixin for a single validation error detail
+@mixin
+structure ValidationErrorDetailMixin {
+    @required
+    detail: String
+
+    @required
+    code: String
+
+    @required
+    ref: String
+}
+
+/// Validation error following RFC 7807 with errors array
+@mixin
+@validationError
+structure ValidationErrorMixin with [ProblemDetailMixin] {
+    @required
+    type: String = "/errors/types/validation"
+
+    @required
+    title: String = "Validation Problem"
+}
+
+// ------------ MissingValue Validation Error ------------
+structure MissingValueValidationDetail with [ValidationErrorDetailMixin] {
+    @required
+    code: String = "missing_value"
+}
+
+list MissingValueValidationDetailList {
+    member: MissingValueValidationDetail
+}
+
+@errorExample([
+    {
+        title: "Missing value validation error"
+        documentation: "Returned when required fields are missing"
+        content: {
+            type: "/errors/types/validation"
+            title: "Validation Problem"
+            status: 400
+            detail: "Validation failed"
+            instance: "/api/v1/users"
+            errors: [
+                {
+                    detail: "Name is required"
+                    code: "missing_value"
+                    ref: "name"
+                }
+            ]
+        }
+    }
+])
+@error("client")
+@httpError(400)
+structure MissingValueValidationError with [ValidationErrorMixin] {
+    @required
+    errors: MissingValueValidationDetailList
+}
+
+// ------------ InvalidFormat Validation Error ------------
+structure InvalidFormatAttributes {
+    @required
+    pattern: String
+}
+
+structure InvalidFormatValidationDetail with [ValidationErrorDetailMixin] {
+    @required
+    code: String = "invalid_format"
+
+    attributes: InvalidFormatAttributes
+}
+
+list InvalidFormatValidationDetailList {
+    member: InvalidFormatValidationDetail
+}
+
+@errorExample([
+    {
+        title: "Invalid format validation error"
+        documentation: "Returned when field values don't match expected format"
+        content: {
+            type: "/errors/types/validation"
+            title: "Validation Problem"
+            status: 400
+            detail: "Validation failed"
+            instance: "/api/v1/users"
+            errors: [
+                {
+                    detail: "Email must be a valid email address"
+                    code: "invalid_value"
+                    ref: "email"
+                    attributes: { pattern: "^[a-zA-Z0-9]+$" }
+                }
+            ]
+        }
+    }
+])
+@error("client")
+@httpError(400)
+structure InvalidFormatValidationError with [ValidationErrorMixin] {
+    @required
+    errors: InvalidFormatValidationDetailList
+}
