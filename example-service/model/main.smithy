@@ -2,6 +2,7 @@ $version: "2"
 
 namespace com.example
 
+use alloy#dataExamples
 use aws.protocols#restJson1
 
 @restJson1
@@ -130,11 +131,9 @@ structure DomainErrorMixin with [ProblemDetailMixin] {
 }
 
 // ------------ TransferLimitExceeded Domain Error ------------
-@errorExample([
+@dataExamples([
     {
-        title: "Transfer limit exceeded error"
-        documentation: "Returned when a transfer exceeds the allowed limit"
-        content: {
+        smithy: {
             type: "https://errors.example.com/domain-error"
             title: "Transfer Limit Exceeded"
             errorCode: "TRANSFER_LIMIT_EXCEEDED"
@@ -164,11 +163,9 @@ structure TransferLimitAttributes {
 }
 
 // ------------ AccountSuspended Domain Error ------------
-@errorExample([
+@dataExamples([
     {
-        title: "Account suspended error"
-        documentation: "Returned when the user's account has been suspended"
-        content: {
+        smithy: {
             type: "https://errors.example.com/domain-error"
             title: "Account Suspended"
             errorCode: "ACCOUNT_SUSPENDED"
