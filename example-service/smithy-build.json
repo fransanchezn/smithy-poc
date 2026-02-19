@@ -1,0 +1,16 @@
+{
+    "version": "1.0",
+    "sources": ["model"],
+    "projections": {
+        "openapi": {
+            "plugins": {
+                "openapi": {
+                    "service": "com.example#ExampleService",
+                    "protocol": "aws.protocols#restJson1",
+                    "jsonContentType": "application/json",
+                    "onErrorStatusConflict": "oneOf"
+                }
+            }
+        }
+    }
+}
