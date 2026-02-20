@@ -12,6 +12,6 @@ public final class ErrorExampleExtension implements Smithy2OpenApiExtension {
 
     @Override
     public List<OpenApiMapper> getOpenApiMappers() {
-        return List.of(new ErrorExampleMapper());
+        return List.of(new ConstMapper(), new ErrorExampleMapper());
     }
 }
