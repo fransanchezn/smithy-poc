@@ -24,6 +24,11 @@ operation ListUsers {
         @required
         users: UserList
     }
+
+    errors: [
+        AccountSuspendedDomainError
+        MissingValueValidationError
+    ]
 }
 
 // Get a user by ID
@@ -44,6 +49,8 @@ operation GetUser {
     errors: [
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
     ]
 }
 
@@ -62,6 +69,13 @@ operation CreateUser {
         @required
         user: User
     }
+
+    errors: [
+        AccountSuspendedDomainError
+        TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
+    ]
 }
 
 // Delete a user
@@ -77,6 +91,8 @@ operation DeleteUser {
     errors: [
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
+        MissingValueValidationError
+        InvalidFormatValidationError
     ]
 }
 
@@ -97,101 +113,3 @@ structure User {
 list UserList {
     member: User
 }
-
-// --------- Problem Detail (base class) ---------
-@mixin
-structure ProblemDetailMixin {
-    @required
-    type: String
-
-    @required
-    title: String
-
-    detail: String
-
-    instance: String
-}
-
-// --------- Domain Error ---------
-@trait
-structure domainError {}
-
-@mixin
-@domainError
-structure DomainErrorMixin with [ProblemDetailMixin] {
-    @required
-    type: String = "https://errors.example.com/domain-error"
-
-    @required
-    title: String
-
-    @required
-    errorCode: String
-}
-
-// ------------ TransferLimitExceeded Domain Error ------------
-@errorExample([
-    {
-        title: "Transfer limit exceeded error"
-        documentation: "Returned when a transfer exceeds the allowed limit"
-        content: {
-            type: "https://errors.example.com/domain-error"
-            title: "Transfer Limit Exceeded"
-            errorCode: "TRANSFER_LIMIT_EXCEEDED"
-            attributes: { amount: 15000.00, currency: "USD" }
-        }
-    }
-])
-@error("client")
-@httpError(422)
-structure TransferLimitExceededDomainError with [DomainErrorMixin] {
-    @required
-    title: String = "Transfer Limit Exceeded"
-
-    @required
-    errorCode: String = "TRANSFER_LIMIT_EXCEEDED"
-
-    @required
-    attributes: TransferLimitAttributes
-}
-
-structure TransferLimitAttributes {
-    @required
-    amount: Double
-
-    @required
-    currency: String
-}
-
-// ------------ AccountSuspended Domain Error ------------
-@errorExample([
-    {
-        title: "Account suspended error"
-        documentation: "Returned when the user's account has been suspended"
-        content: {
-            type: "https://errors.example.com/domain-error"
-            title: "Account Suspended"
-            errorCode: "ACCOUNT_SUSPENDED"
-            attributes: { reason: "Violation of terms of service" }
-        }
-    }
-])
-@error("client")
-@httpError(422)
-structure AccountSuspendedDomainError with [DomainErrorMixin] {
-    @required
-    title: String = "Account Suspended"
-
-    @required
-    errorCode: String = "ACCOUNT_SUSPENDED"
-
-    @required
-    attributes: AccountSuspendedAttributes
-}
-
-structure AccountSuspendedAttributes {
-    @required
-    reason: String
-}
-// --------- Validation Error ---------
-// --------- Endpoint Errors ---------
