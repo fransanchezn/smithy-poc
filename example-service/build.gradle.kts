@@ -8,6 +8,18 @@ val smithyVersion: String by project
 // The smithy-base plugin creates a 'smithyBuild' configuration
 val smithyBuild by configurations.getting
 
+tasks.named("compileJava") {
+    dependsOn("smithyBuild")
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs("model/")
+        }
+    }
+}
+
 dependencies {
     implementation("software.amazon.smithy:smithy-model:$smithyVersion")
     implementation("software.amazon.smithy:smithy-aws-traits:$smithyVersion")
