@@ -12,6 +12,10 @@ public final class AccessProblemDetail extends ProblemDetail {
 
     private static final URI TYPE = URI.create("https://errors.example.com/access-error");
 
+    public AccessProblemDetail() {
+        super();
+    }
+
     private AccessProblemDetail(HttpStatus status, String title, String detail) {
         super(status.value());
         setType(TYPE);

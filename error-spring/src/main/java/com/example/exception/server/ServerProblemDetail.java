@@ -12,6 +12,10 @@ public final class ServerProblemDetail extends ProblemDetail {
 
     private static final URI TYPE = URI.create("https://errors.example.com/server-error");
 
+    public ServerProblemDetail() {
+        super();
+    }
+
     private ServerProblemDetail(HttpStatus status, String title, String detail) {
         super(status.value());
         setType(TYPE);

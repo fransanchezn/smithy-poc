@@ -6,14 +6,30 @@ import java.util.List;
 
 /**
  * Exception for validation errors.
- * Sealed to only permit specific validation exception implementations.
  * Detail is not supported at root level - each ValidationError has its own detail.
  */
-public abstract sealed class ValidationErrorResponseException extends ApiErrorResponseException
-        permits InvalidFormatException, MissingValueException {
+public final class ValidationErrorResponseException extends ApiErrorResponseException {
 
-    protected ValidationErrorResponseException(ValidationProblemDetail problemDetail) {
+    public ValidationErrorResponseException() {
+        super(new ValidationProblemDetail());
+    }
+
+    public ValidationErrorResponseException(ValidationProblemDetail problemDetail) {
         super(problemDetail);
+    }
+
+    public ValidationErrorResponseException(List<? extends ValidationError> errors) {
+        super(new ValidationProblemDetail(errors));
+    }
+
+    // Factory methods
+
+    public static ValidationErrorResponseException invalidFormat(String detail, String ref, String pattern) {
+        return new ValidationErrorResponseException(ValidationProblemDetail.invalidFormat(detail, ref, pattern));
+    }
+
+    public static ValidationErrorResponseException missingValue(String detail, String ref, String missingField) {
+        return new ValidationErrorResponseException(ValidationProblemDetail.missingValue(detail, ref, missingField));
     }
 
     public ValidationProblemDetail getProblemDetail() {
@@ -22,6 +38,16 @@ public abstract sealed class ValidationErrorResponseException extends ApiErrorRe
 
     public ValidationErrorResponseException addError(ValidationError error) {
         getProblemDetail().addError(error);
+        return this;
+    }
+
+    public ValidationErrorResponseException addInvalidFormat(String detail, String ref, String pattern) {
+        getProblemDetail().addInvalidFormat(detail, ref, pattern);
+        return this;
+    }
+
+    public ValidationErrorResponseException addMissingValue(String detail, String ref, String missingField) {
+        getProblemDetail().addMissingValue(detail, ref, missingField);
         return this;
     }
 

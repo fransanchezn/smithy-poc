@@ -1,5 +1,8 @@
 package com.example.exception.validation;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * Validation error for invalid format issues.
  */
@@ -7,7 +10,11 @@ public final class InvalidFormatValidationError extends ValidationError {
 
     private static final String CODE = "invalid_format";
 
-    public InvalidFormatValidationError(String detail, String ref, InvalidFormatAttributes attributes) {
+    @JsonCreator
+    public InvalidFormatValidationError(
+            @JsonProperty("detail") String detail,
+            @JsonProperty("ref") String ref,
+            @JsonProperty("attributes") InvalidFormatAttributes attributes) {
         super(CODE, detail, ref, attributes);
     }
 

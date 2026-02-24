@@ -1,12 +1,15 @@
 package com.example.exception;
 
 import com.example.exception.access.AccessErrorResponseException;
+import com.example.exception.access.AccessProblemDetail;
 import com.example.exception.domain.AccountSuspendedException;
+import com.example.exception.domain.AccountSuspendedProblemDetail;
 import com.example.exception.domain.TransferLimitExceededException;
+import com.example.exception.domain.TransferLimitExceededProblemDetail;
 import com.example.exception.server.ServerErrorResponseException;
-import com.example.exception.validation.InvalidFormatException;
-import com.example.exception.validation.MissingValueException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.example.exception.server.ServerProblemDetail;
+import com.example.exception.validation.ValidationErrorResponseException;
+import com.example.exception.validation.ValidationProblemDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -15,6 +18,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.json.ProblemDetailJacksonMixin;
 
 import java.math.BigDecimal;
+import java.net.URI;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,29 +36,29 @@ class ExceptionSerializationTest {
     class AccessExceptionTest {
 
         @Test
-        void shouldSerializeUnauthorizedException() throws Exception {
+        void shouldSerializeAndDeserializeUnauthorizedException() throws Exception {
             AccessErrorResponseException exception = AccessErrorResponseException.unauthorized("Invalid token");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/access-error");
-            assertThat(node.get("title").asText()).isEqualTo("Unauthorized");
-            assertThat(node.get("status").asInt()).isEqualTo(401);
-            assertThat(node.get("detail").asText()).isEqualTo("Invalid token");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
+            assertThat(deserialized.getStatus()).isEqualTo(401);
+            assertThat(deserialized.getDetail()).isEqualTo("Invalid token");
         }
 
         @Test
-        void shouldSerializeForbiddenException() throws Exception {
+        void shouldSerializeAndDeserializeForbiddenException() throws Exception {
             AccessErrorResponseException exception = AccessErrorResponseException.forbidden("Insufficient permissions");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/access-error");
-            assertThat(node.get("title").asText()).isEqualTo("Forbidden");
-            assertThat(node.get("status").asInt()).isEqualTo(403);
-            assertThat(node.get("detail").asText()).isEqualTo("Insufficient permissions");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Forbidden");
+            assertThat(deserialized.getStatus()).isEqualTo(403);
+            assertThat(deserialized.getDetail()).isEqualTo("Insufficient permissions");
         }
 
         @Test
@@ -71,29 +75,29 @@ class ExceptionSerializationTest {
     class ServerExceptionTest {
 
         @Test
-        void shouldSerializeInternalServerErrorException() throws Exception {
+        void shouldSerializeAndDeserializeInternalServerErrorException() throws Exception {
             ServerErrorResponseException exception = ServerErrorResponseException.internalServerError("Database connection failed");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/server-error");
-            assertThat(node.get("title").asText()).isEqualTo("Internal Server Error");
-            assertThat(node.get("status").asInt()).isEqualTo(500);
-            assertThat(node.get("detail").asText()).isEqualTo("Database connection failed");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Internal Server Error");
+            assertThat(deserialized.getStatus()).isEqualTo(500);
+            assertThat(deserialized.getDetail()).isEqualTo("Database connection failed");
         }
 
         @Test
-        void shouldSerializeServiceUnavailableException() throws Exception {
+        void shouldSerializeAndDeserializeServiceUnavailableException() throws Exception {
             ServerErrorResponseException exception = ServerErrorResponseException.serviceUnavailable("Service is under maintenance");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/server-error");
-            assertThat(node.get("title").asText()).isEqualTo("Service Unavailable");
-            assertThat(node.get("status").asInt()).isEqualTo(503);
-            assertThat(node.get("detail").asText()).isEqualTo("Service is under maintenance");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Service Unavailable");
+            assertThat(deserialized.getStatus()).isEqualTo(503);
+            assertThat(deserialized.getDetail()).isEqualTo("Service is under maintenance");
         }
 
         @Test
@@ -109,7 +113,7 @@ class ExceptionSerializationTest {
     class DomainExceptionTest {
 
         @Test
-        void shouldSerializeTransferLimitExceededException() throws Exception {
+        void shouldSerializeAndDeserializeTransferLimitExceededException() throws Exception {
             TransferLimitExceededException exception = new TransferLimitExceededException(
                     "Your transfer exceeds the daily limit",
                     new BigDecimal("50000.00"),
@@ -117,33 +121,33 @@ class ExceptionSerializationTest {
             );
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            TransferLimitExceededProblemDetail deserialized = objectMapper.readValue(json, TransferLimitExceededProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/domain-error");
-            assertThat(node.get("title").asText()).isEqualTo("Transfer Limit Exceeded");
-            assertThat(node.get("status").asInt()).isEqualTo(422);
-            assertThat(node.get("detail").asText()).isEqualTo("Your transfer exceeds the daily limit");
-            assertThat(node.get("code").asText()).isEqualTo("TRANSFER_LIMIT_EXCEEDED");
-            assertThat(node.get("attributes").get("amount").decimalValue()).isEqualByComparingTo("50000.00");
-            assertThat(node.get("attributes").get("currency").asText()).isEqualTo("EUR");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
+            assertThat(deserialized.getStatus()).isEqualTo(422);
+            assertThat(deserialized.getDetail()).isEqualTo("Your transfer exceeds the daily limit");
+            assertThat(deserialized.getCode()).isEqualTo("TRANSFER_LIMIT_EXCEEDED");
+            assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo("50000.00");
+            assertThat(deserialized.getAttributes().currency()).isEqualTo("EUR");
         }
 
         @Test
-        void shouldSerializeAccountSuspendedException() throws Exception {
+        void shouldSerializeAndDeserializeAccountSuspendedException() throws Exception {
             AccountSuspendedException exception = new AccountSuspendedException(
                     "Account access denied",
                     "Multiple failed login attempts"
             );
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            AccountSuspendedProblemDetail deserialized = objectMapper.readValue(json, AccountSuspendedProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("https://errors.example.com/domain-error");
-            assertThat(node.get("title").asText()).isEqualTo("Account Suspended");
-            assertThat(node.get("status").asInt()).isEqualTo(422);
-            assertThat(node.get("detail").asText()).isEqualTo("Account access denied");
-            assertThat(node.get("code").asText()).isEqualTo("ACCOUNT_SUSPENDED");
-            assertThat(node.get("attributes").get("reason").asText()).isEqualTo("Multiple failed login attempts");
+            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
+            assertThat(deserialized.getStatus()).isEqualTo(422);
+            assertThat(deserialized.getDetail()).isEqualTo("Account access denied");
+            assertThat(deserialized.getCode()).isEqualTo("ACCOUNT_SUSPENDED");
+            assertThat(deserialized.getAttributes().reason()).isEqualTo("Multiple failed login attempts");
         }
 
         @Test
@@ -164,48 +168,60 @@ class ExceptionSerializationTest {
     class ValidationExceptionTest {
 
         @Test
-        void shouldSerializeInvalidFormatException() throws Exception {
-            InvalidFormatException exception = new InvalidFormatException()
-                    .addError("Email format is invalid", "user.email", "^[\\w.-]+@[\\w.-]+\\.\\w+$")
-                    .addError("Date format is invalid", "user.birthDate", "^\\d{4}-\\d{2}-\\d{2}$");
+        void shouldSerializeAndDeserializeInvalidFormatErrors() throws Exception {
+            ValidationErrorResponseException exception = new ValidationErrorResponseException()
+                    .addInvalidFormat("Email format is invalid", "user.email", "^[\\w.-]+@[\\w.-]+\\.\\w+$")
+                    .addInvalidFormat("Date format is invalid", "user.birthDate", "^\\d{4}-\\d{2}-\\d{2}$");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            ValidationProblemDetail deserialized = objectMapper.readValue(json, ValidationProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("/errors/types/validation");
-            assertThat(node.get("title").asText()).isEqualTo("Validation Problem");
-            assertThat(node.get("status").asInt()).isEqualTo(400);
-            assertThat(node.get("errors").size()).isEqualTo(2);
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/validation"));
+            assertThat(deserialized.getTitle()).isEqualTo("Validation Problem");
+            assertThat(deserialized.getStatus()).isEqualTo(400);
+            assertThat(deserialized.getErrors()).hasSize(2);
 
-            JsonNode firstError = node.get("errors").get(0);
-            assertThat(firstError.get("code").asText()).isEqualTo("invalid_format");
-            assertThat(firstError.get("detail").asText()).isEqualTo("Email format is invalid");
-            assertThat(firstError.get("ref").asText()).isEqualTo("user.email");
+            assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
+            assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("Email format is invalid");
+            assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo("user.email");
         }
 
         @Test
-        void shouldSerializeMissingValueException() throws Exception {
-            MissingValueException exception = new MissingValueException()
-                    .addError("First name is required", "firstName", "firstName")
-                    .addError("Last name is required", "lastName", "lastName");
+        void shouldSerializeAndDeserializeMissingValueErrors() throws Exception {
+            ValidationErrorResponseException exception = new ValidationErrorResponseException()
+                    .addMissingValue("First name is required", "firstName", "firstName")
+                    .addMissingValue("Last name is required", "lastName", "lastName");
 
             String json = objectMapper.writeValueAsString(exception.getBody());
-            JsonNode node = objectMapper.readTree(json);
+            ValidationProblemDetail deserialized = objectMapper.readValue(json, ValidationProblemDetail.class);
 
-            assertThat(node.get("type").asText()).isEqualTo("/errors/types/validation");
-            assertThat(node.get("title").asText()).isEqualTo("Validation Problem");
-            assertThat(node.get("status").asInt()).isEqualTo(400);
-            assertThat(node.get("errors").size()).isEqualTo(2);
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/validation"));
+            assertThat(deserialized.getTitle()).isEqualTo("Validation Problem");
+            assertThat(deserialized.getStatus()).isEqualTo(400);
+            assertThat(deserialized.getErrors()).hasSize(2);
 
-            JsonNode firstError = node.get("errors").get(0);
-            assertThat(firstError.get("code").asText()).isEqualTo("missing_value");
-            assertThat(firstError.get("detail").asText()).isEqualTo("First name is required");
+            assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("missing_value");
+            assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("First name is required");
+        }
+
+        @Test
+        void shouldSerializeAndDeserializeMixedErrors() throws Exception {
+            ValidationErrorResponseException exception = new ValidationErrorResponseException()
+                    .addInvalidFormat("Invalid email", "email", "^[a-z]+@[a-z]+$")
+                    .addMissingValue("Name is required", "name", "name");
+
+            String json = objectMapper.writeValueAsString(exception.getBody());
+            ValidationProblemDetail deserialized = objectMapper.readValue(json, ValidationProblemDetail.class);
+
+            assertThat(deserialized.getErrors()).hasSize(2);
+            assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
+            assertThat(deserialized.getErrors().get(1).getCode()).isEqualTo("missing_value");
         }
 
         @Test
         void shouldProvideTypedAccessToErrors() {
-            InvalidFormatException exception = new InvalidFormatException()
-                    .addError("Invalid email", "email", "^[a-z]+@[a-z]+$");
+            ValidationErrorResponseException exception = ValidationErrorResponseException
+                    .invalidFormat("Invalid email", "email", "^[a-z]+@[a-z]+$");
 
             assertThat(exception.getErrors()).hasSize(1);
             assertThat(exception.getErrors().get(0).getCode()).isEqualTo("invalid_format");
@@ -215,12 +231,53 @@ class ExceptionSerializationTest {
 
         @Test
         void shouldSupportFluentApi() {
-            MissingValueException exception = new MissingValueException()
-                    .addError("Field 1 required", "field1", "field1")
-                    .addError("Field 2 required", "field2", "field2")
-                    .addError("Field 3 required", "field3", "field3");
+            ValidationErrorResponseException exception = new ValidationErrorResponseException()
+                    .addMissingValue("Field 1 required", "field1", "field1")
+                    .addMissingValue("Field 2 required", "field2", "field2")
+                    .addMissingValue("Field 3 required", "field3", "field3");
 
             assertThat(exception.getErrors()).hasSize(3);
+        }
+    }
+
+    @Nested
+    class RoundTripTest {
+
+        @Test
+        void shouldRoundTripDomainException() throws Exception {
+            TransferLimitExceededException original = new TransferLimitExceededException(
+                    "Transfer limit exceeded",
+                    new BigDecimal("25000"),
+                    "GBP"
+            );
+
+            String json = objectMapper.writeValueAsString(original.getBody());
+            TransferLimitExceededProblemDetail deserialized = objectMapper.readValue(json, TransferLimitExceededProblemDetail.class);
+
+            assertThat(deserialized.getType()).isEqualTo(original.getBody().getType());
+            assertThat(deserialized.getTitle()).isEqualTo(original.getBody().getTitle());
+            assertThat(deserialized.getStatus()).isEqualTo(original.getBody().getStatus());
+            assertThat(deserialized.getDetail()).isEqualTo(original.getBody().getDetail());
+            assertThat(deserialized.getCode()).isEqualTo(original.getCode());
+            assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo(original.getAttributes().amount());
+            assertThat(deserialized.getAttributes().currency()).isEqualTo(original.getAttributes().currency());
+        }
+
+        @Test
+        void shouldRoundTripValidationException() throws Exception {
+            ValidationErrorResponseException original = ValidationErrorResponseException
+                    .invalidFormat("Invalid format", "field", "pattern");
+
+            String json = objectMapper.writeValueAsString(original.getBody());
+            ValidationProblemDetail deserialized = objectMapper.readValue(json, ValidationProblemDetail.class);
+
+            assertThat(deserialized.getType()).isEqualTo(original.getBody().getType());
+            assertThat(deserialized.getTitle()).isEqualTo(original.getBody().getTitle());
+            assertThat(deserialized.getStatus()).isEqualTo(original.getBody().getStatus());
+            assertThat(deserialized.getErrors()).hasSize(original.getErrors().size());
+            assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo(original.getErrors().get(0).getCode());
+            assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo(original.getErrors().get(0).getDetail());
+            assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo(original.getErrors().get(0).getRef());
         }
     }
 }
