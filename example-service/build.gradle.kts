@@ -23,9 +23,9 @@ sourceSets {
 dependencies {
     implementation("software.amazon.smithy:smithy-model:$smithyVersion")
     implementation("software.amazon.smithy:smithy-aws-traits:$smithyVersion")
-    implementation(project(":error-example-trait"))
+    implementation(project(":error-trait"))
 
-    smithyBuild(project(":error-example-trait"))
+    smithyBuild(project(":error-trait"))
     smithyBuild("software.amazon.smithy:smithy-openapi:$smithyVersion")
     smithyBuild("software.amazon.smithy:smithy-aws-traits:$smithyVersion")
 }
