@@ -26,8 +26,10 @@ operation ListUsers {
     }
 
     errors: [
+        // Validation errors
+        GenericValidationError
+        // Domain errors
         AccountSuspendedDomainError
-        MissingValueValidationError
     ]
 }
 
@@ -47,10 +49,11 @@ operation GetUser {
     }
 
     errors: [
+        // Validation errors
+        GenericValidationError
+        // Domain errors
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
-        MissingValueValidationError
-        InvalidFormatValidationError
     ]
 }
 
@@ -71,10 +74,11 @@ operation CreateUser {
     }
 
     errors: [
+        // Validation errors
+        GenericValidationError
+        // Domain errors
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
-        MissingValueValidationError
-        InvalidFormatValidationError
     ]
 }
 
@@ -89,10 +93,11 @@ operation DeleteUser {
     }
 
     errors: [
+        // Validation errors
+        GenericValidationError
+        // Domain errors
         AccountSuspendedDomainError
         TransferLimitExceededDomainError
-        MissingValueValidationError
-        InvalidFormatValidationError
     ]
 }
 

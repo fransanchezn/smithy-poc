@@ -13,6 +13,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
@@ -241,6 +242,8 @@ public final class MemberExampleMapper implements OpenApiMapper {
         // Get operation errors
         Set<ShapeId> operationErrors = new HashSet<>(smithyOperation.getErrors());
 
+        LOGGER.fine("Processing operation: " + smithyOperation.getId().getName() + " with errors: " + operationErrors);
+
         if (operationErrors.isEmpty()) {
             return operation;
         }
@@ -248,34 +251,62 @@ public final class MemberExampleMapper implements OpenApiMapper {
         ObjectNode responses = operation.getObjectMember("responses").orElse(ObjectNode.builder().build());
         ObjectNode.Builder updatedResponses = ObjectNode.builder();
 
-        // Group errors by status code
+        // Group errors by status code (only errors declared on this operation)
+        // Handle synthesized union errors by resolving their members
         Map<Integer, Set<ShapeId>> errorsByStatusCode = new HashMap<>();
         for (ShapeId errorId : operationErrors) {
-            Optional<StructureShape> errorShape = model.getShape(errorId).flatMap(Shape::asStructureShape);
-            if (errorShape.isPresent()) {
-                int statusCode = errorShape.get().getTrait(HttpErrorTrait.class)
-                        .map(HttpErrorTrait::getCode)
-                        .orElse(getDefaultStatusCode(errorShape.get()));
+            Shape shape = model.expectShape(errorId);
+            LOGGER.fine("  Error shape type for " + errorId.getName() + ": " + shape.getType());
 
-                errorsByStatusCode.computeIfAbsent(statusCode, k -> new HashSet<>()).add(errorId);
-            }
-        }
+            if (shape.isStructureShape()) {
+                StructureShape errorShape = shape.asStructureShape().get();
 
-        // Also add the original error shapes that have examples and match the status code
-        for (Map.Entry<ShapeId, ObjectNode> entry : errorExamples.entrySet()) {
-            ShapeId errorId = entry.getKey();
-            Optional<StructureShape> errorShape = model.getShape(errorId).flatMap(Shape::asStructureShape);
-            if (errorShape.isPresent()) {
-                int statusCode = errorShape.get().getTrait(HttpErrorTrait.class)
-                        .map(HttpErrorTrait::getCode)
-                        .orElse(getDefaultStatusCode(errorShape.get()));
+                // Check if this is a synthesized error union wrapper (has single "errorUnion" member)
+                Optional<MemberShape> errorUnionMember = errorShape.getMember("errorUnion");
+                if (errorUnionMember.isPresent()) {
+                    // This is a synthesized error wrapper - resolve the union members
+                    Shape unionTarget = model.expectShape(errorUnionMember.get().getTarget());
+                    if (unionTarget.isUnionShape()) {
+                        int statusCode = errorShape.getTrait(HttpErrorTrait.class)
+                                .map(HttpErrorTrait::getCode)
+                                .orElse(getDefaultStatusCode(errorShape));
+                        LOGGER.fine("  Found synthesized error wrapper: " + errorId.getName() + " with status " + statusCode);
 
-                // Check if this error is used by this operation
-                if (errorsByStatusCode.containsKey(statusCode)) {
-                    errorsByStatusCode.get(statusCode).add(errorId);
+                        for (MemberShape member : unionTarget.asUnionShape().get().getAllMembers().values()) {
+                            ShapeId targetId = member.getTarget();
+                            LOGGER.fine("    Union member: " + targetId.getName());
+                            // Add the original error shape, which should have examples
+                            errorsByStatusCode.computeIfAbsent(statusCode, k -> new HashSet<>()).add(targetId);
+                        }
+                    }
+                } else {
+                    // Regular error structure
+                    int statusCode = errorShape.getTrait(HttpErrorTrait.class)
+                            .map(HttpErrorTrait::getCode)
+                            .orElse(getDefaultStatusCode(errorShape));
+
+                    LOGGER.fine("  Error " + errorId.getName() + " has status code " + statusCode);
+                    errorsByStatusCode.computeIfAbsent(statusCode, k -> new HashSet<>()).add(errorId);
+                }
+            } else if (shape.isUnionShape()) {
+                // Synthesized union error - resolve its members
+                LOGGER.fine("  Found union error: " + errorId.getName());
+                for (MemberShape member : shape.asUnionShape().get().getAllMembers().values()) {
+                    ShapeId targetId = member.getTarget();
+                    Optional<StructureShape> targetShape = model.getShape(targetId).flatMap(Shape::asStructureShape);
+                    if (targetShape.isPresent() && targetShape.get().hasTrait(ErrorTrait.class)) {
+                        int statusCode = targetShape.get().getTrait(HttpErrorTrait.class)
+                                .map(HttpErrorTrait::getCode)
+                                .orElse(getDefaultStatusCode(targetShape.get()));
+                        LOGGER.fine("    Union member " + targetId.getName() + " has status code " + statusCode);
+                        errorsByStatusCode.computeIfAbsent(statusCode, k -> new HashSet<>()).add(targetId);
+                    }
                 }
             }
         }
+
+        LOGGER.fine("  errorsByStatusCode: " + errorsByStatusCode);
+        LOGGER.fine("  errorExamples keys: " + errorExamples.keySet());
 
         for (Map.Entry<String, Node> responseEntry : responses.getStringMap().entrySet()) {
             String statusCode = responseEntry.getKey();
@@ -292,9 +323,11 @@ public final class MemberExampleMapper implements OpenApiMapper {
 
             // Find errors that match this status code and have examples
             Set<ShapeId> errorsForCode = errorsByStatusCode.getOrDefault(code, new HashSet<>());
+            LOGGER.fine("  For status " + code + ", errorsForCode: " + errorsForCode);
             ObjectNode.Builder examplesForResponse = ObjectNode.builder();
 
             for (ShapeId errorId : errorsForCode) {
+                LOGGER.fine("    Checking errorId: " + errorId + ", containsKey: " + errorExamples.containsKey(errorId));
                 if (errorExamples.containsKey(errorId)) {
                     String errorName = errorId.getName();
 
@@ -307,6 +340,8 @@ public final class MemberExampleMapper implements OpenApiMapper {
             }
 
             ObjectNode examplesNode = examplesForResponse.build();
+            LOGGER.fine("  examplesNode for status " + code + ": " + examplesNode);
+            // Always update if there are examples, regardless of oneOf schema
             if (!examplesNode.isEmpty()) {
                 // Update the response's content to include examples
                 response = updateResponseContent(response, examplesNode);
