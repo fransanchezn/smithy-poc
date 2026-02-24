@@ -3,19 +3,16 @@ $version: "2"
 namespace com.example
 
 // ------------ TransferLimitExceeded Domain Error ------------
-@errorExample([
-    {
-        title: "Transfer limit exceeded error"
-        documentation: "Returned when a transfer exceeds the allowed limit"
-        content: {
-            type: "https://errors.example.com/domain-error"
-            title: "Transfer Limit Exceeded"
-            status: 422
-            code: "TRANSFER_LIMIT_EXCEEDED"
-            attributes: { amount: 15000.00, currency: "USD" }
-        }
-    }
-])
+structure TransferLimitAttributes {
+    @memberExample(15000.00)
+    @required
+    amount: Double
+
+    @memberExample("USD")
+    @required
+    currency: String
+}
+
 @error("client")
 @httpError(422)
 structure TransferLimitExceededDomainError with [DomainErrorMixin] {
@@ -33,12 +30,4 @@ structure TransferLimitExceededDomainError with [DomainErrorMixin] {
 
     @required
     attributes: TransferLimitAttributes
-}
-
-structure TransferLimitAttributes {
-    @required
-    amount: Double
-
-    @required
-    currency: String
 }

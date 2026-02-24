@@ -1,11 +1,13 @@
 package com.example.openapi;
 
-import com.example.traits.ErrorExampleTrait;
+import com.example.traits.ConstTrait;
+import com.example.traits.MemberExampleTrait;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.knowledge.HttpBinding;
-import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.node.ArrayNode;
 import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.shapes.ListShape;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
@@ -13,6 +15,8 @@ import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.HttpTrait;
+import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.openapi.fromsmithy.Context;
 import software.amazon.smithy.openapi.fromsmithy.OpenApiMapper;
 import software.amazon.smithy.openapi.model.OpenApi;
@@ -25,31 +29,34 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * OpenAPI mapper that generates /components/examples entries from @errorExample traits
- * and references them in error responses.
+ * OpenAPI mapper that generates /components/examples entries from @memberExample and @const traits
+ * on error structure members, and references them in error responses.
  */
-public final class ErrorExampleMapper implements OpenApiMapper {
+public final class MemberExampleMapper implements OpenApiMapper {
 
-    private static final Logger LOGGER = Logger.getLogger(ErrorExampleMapper.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MemberExampleMapper.class.getName());
 
     @Override
     public byte getOrder() {
-        // Run before RemoveUnusedComponents (order 64)
-        return 60;
+        // Run after ConstMapper (50) and before RemoveUnusedComponents (64)
+        return 61;
     }
 
     @Override
-    public ObjectNode updateNode(Context<? extends software.amazon.smithy.model.traits.Trait> context,
+    public ObjectNode updateNode(Context<? extends Trait> context,
                                  OpenApi openapi,
                                  ObjectNode node) {
         Model model = context.getModel();
         ServiceShape service = context.getService();
 
-        // Collect all error shapes with @errorExample trait
-        Map<ShapeId, ErrorExampleTrait> errorExamples = new HashMap<>();
+        // Collect all error shapes and build examples from their members
+        Map<ShapeId, ObjectNode> errorExamples = new HashMap<>();
         for (StructureShape shape : model.getStructureShapes()) {
-            if (shape.hasTrait(ErrorTrait.class) && shape.hasTrait(ErrorExampleTrait.class)) {
-                errorExamples.put(shape.getId(), shape.expectTrait(ErrorExampleTrait.class));
+            if (shape.hasTrait(ErrorTrait.class)) {
+                Optional<Node> example = buildExampleFromMembers(model, shape);
+                if (example.isPresent()) {
+                    errorExamples.put(shape.getId(), example.get().expectObjectNode());
+                }
             }
         }
 
@@ -57,27 +64,18 @@ public final class ErrorExampleMapper implements OpenApiMapper {
             return node;
         }
 
-        LOGGER.fine("Found " + errorExamples.size() + " error shapes with @errorExample trait");
+        LOGGER.fine("Found " + errorExamples.size() + " error shapes with member examples");
 
         // Build the examples to add to components/examples
         ObjectNode.Builder examplesBuilder = ObjectNode.builder();
-        for (Map.Entry<ShapeId, ErrorExampleTrait> entry : errorExamples.entrySet()) {
+        for (Map.Entry<ShapeId, ObjectNode> entry : errorExamples.entrySet()) {
             String errorName = entry.getKey().getName();
-            ErrorExampleTrait trait = entry.getValue();
+            ObjectNode exampleNode = ObjectNode.builder()
+                    .withMember("summary", errorName)
+                    .withMember("value", entry.getValue())
+                    .build();
 
-            for (int i = 0; i < trait.getExamples().size(); i++) {
-                ErrorExampleTrait.ErrorExampleEntry example = trait.getExamples().get(i);
-                String exampleName = errorName + "Example" + (trait.getExamples().size() > 1 ? (i + 1) : "");
-
-                ObjectNode.Builder exampleNode = ObjectNode.builder()
-                        .withMember("summary", example.getTitle())
-                        .withMember("value", example.getContent());
-
-                example.getDocumentation().ifPresent(doc ->
-                        exampleNode.withMember("description", doc));
-
-                examplesBuilder.withMember(exampleName, exampleNode.build());
-            }
+            examplesBuilder.withMember(errorName, exampleNode);
         }
 
         // Get existing components or create new one
@@ -98,12 +96,64 @@ public final class ErrorExampleMapper implements OpenApiMapper {
         return node;
     }
 
+    /**
+     * Recursively builds an example object from @const and @memberExample traits on structure members.
+     */
+    private Optional<Node> buildExampleFromMembers(Model model, StructureShape shape) {
+        ObjectNode.Builder builder = ObjectNode.builder();
+        boolean hasAnyExample = false;
+
+        for (MemberShape member : shape.getAllMembers().values()) {
+            String memberName = member.getMemberName();
+            Shape targetShape = model.expectShape(member.getTarget());
+
+            // Priority: @const > @memberExample > recurse for structures/lists
+            if (member.hasTrait(ConstTrait.class)) {
+                builder.withMember(memberName, member.expectTrait(ConstTrait.class).getValue());
+                hasAnyExample = true;
+            } else if (member.hasTrait(MemberExampleTrait.class)) {
+                builder.withMember(memberName, member.expectTrait(MemberExampleTrait.class).getValue());
+                hasAnyExample = true;
+            } else if (targetShape.isStructureShape()) {
+                // Recurse into nested structure
+                Optional<Node> nested = buildExampleFromMembers(model, targetShape.asStructureShape().get());
+                if (nested.isPresent()) {
+                    builder.withMember(memberName, nested.get());
+                    hasAnyExample = true;
+                }
+            } else if (targetShape.isListShape()) {
+                // Handle lists - build example for member type
+                Optional<Node> listExample = buildListExample(model, targetShape.asListShape().get());
+                if (listExample.isPresent()) {
+                    builder.withMember(memberName, listExample.get());
+                    hasAnyExample = true;
+                }
+            }
+        }
+
+        return hasAnyExample ? Optional.of(builder.build()) : Optional.empty();
+    }
+
+    /**
+     * Builds an example array for a list shape by creating an example of its member type.
+     */
+    private Optional<Node> buildListExample(Model model, ListShape listShape) {
+        Shape memberTarget = model.expectShape(listShape.getMember().getTarget());
+        if (memberTarget.isStructureShape()) {
+            Optional<Node> itemExample = buildExampleFromMembers(model, memberTarget.asStructureShape().get());
+            if (itemExample.isPresent()) {
+                return Optional.of(ArrayNode.fromNodes(itemExample.get()));
+            }
+        }
+        return Optional.empty();
+    }
+
     private ObjectNode updatePathsWithExampleReferences(
-            Context<? extends software.amazon.smithy.model.traits.Trait> context,
+            Context<? extends Trait> context,
             Model model,
             ServiceShape service,
             ObjectNode node,
-            Map<ShapeId, ErrorExampleTrait> errorExamples) {
+            Map<ShapeId, ObjectNode> errorExamples) {
 
         ObjectNode paths = node.getObjectMember("paths").orElse(ObjectNode.builder().build());
         ObjectNode.Builder updatedPaths = ObjectNode.builder();
@@ -134,7 +184,7 @@ public final class ErrorExampleMapper implements OpenApiMapper {
     }
 
     private Optional<OperationShape> findOperationForPath(
-            Context<? extends software.amazon.smithy.model.traits.Trait> context,
+            Context<? extends Trait> context,
             Model model,
             ServiceShape service,
             String path,
@@ -149,8 +199,7 @@ public final class ErrorExampleMapper implements OpenApiMapper {
                 OperationShape operation = opShape.get();
 
                 // Check if this operation matches the path and method
-                Optional<software.amazon.smithy.model.traits.HttpTrait> httpTrait =
-                        operation.getTrait(software.amazon.smithy.model.traits.HttpTrait.class);
+                Optional<HttpTrait> httpTrait = operation.getTrait(HttpTrait.class);
 
                 if (httpTrait.isPresent()) {
                     String opMethod = httpTrait.get().getMethod().toLowerCase();
@@ -171,7 +220,6 @@ public final class ErrorExampleMapper implements OpenApiMapper {
     }
 
     private String normalizeUri(String uri) {
-        // Convert Smithy URI pattern {param} to OpenAPI {param} (they're the same)
         // Remove query string parameters for comparison
         int queryIndex = uri.indexOf('?');
         if (queryIndex >= 0) {
@@ -188,7 +236,7 @@ public final class ErrorExampleMapper implements OpenApiMapper {
             Model model,
             ObjectNode operation,
             OperationShape smithyOperation,
-            Map<ShapeId, ErrorExampleTrait> errorExamples) {
+            Map<ShapeId, ObjectNode> errorExamples) {
 
         // Get operation errors
         Set<ShapeId> operationErrors = new HashSet<>(smithyOperation.getErrors());
@@ -201,8 +249,6 @@ public final class ErrorExampleMapper implements OpenApiMapper {
         ObjectNode.Builder updatedResponses = ObjectNode.builder();
 
         // Group errors by status code
-        // Note: When onErrorStatusConflict=oneOf, Smithy creates synthetic wrapper shapes
-        // We need to find the actual original errors
         Map<Integer, Set<ShapeId>> errorsByStatusCode = new HashMap<>();
         for (ShapeId errorId : operationErrors) {
             Optional<StructureShape> errorShape = model.getShape(errorId).flatMap(Shape::asStructureShape);
@@ -215,8 +261,8 @@ public final class ErrorExampleMapper implements OpenApiMapper {
             }
         }
 
-        // Also add the original error shapes that have @errorExample and match the status code
-        for (Map.Entry<ShapeId, ErrorExampleTrait> entry : errorExamples.entrySet()) {
+        // Also add the original error shapes that have examples and match the status code
+        for (Map.Entry<ShapeId, ObjectNode> entry : errorExamples.entrySet()) {
             ShapeId errorId = entry.getKey();
             Optional<StructureShape> errorShape = model.getShape(errorId).flatMap(Shape::asStructureShape);
             if (errorShape.isPresent()) {
@@ -224,8 +270,7 @@ public final class ErrorExampleMapper implements OpenApiMapper {
                         .map(HttpErrorTrait::getCode)
                         .orElse(getDefaultStatusCode(errorShape.get()));
 
-                // Check if this error is used by this operation (directly or via a synthetic wrapper)
-                // by checking if the operation's list of errors contains an error with the same status code
+                // Check if this error is used by this operation
                 if (errorsByStatusCode.containsKey(statusCode)) {
                     errorsByStatusCode.get(statusCode).add(errorId);
                 }
@@ -251,19 +296,13 @@ public final class ErrorExampleMapper implements OpenApiMapper {
 
             for (ShapeId errorId : errorsForCode) {
                 if (errorExamples.containsKey(errorId)) {
-                    ErrorExampleTrait trait = errorExamples.get(errorId);
                     String errorName = errorId.getName();
 
-                    for (int i = 0; i < trait.getExamples().size(); i++) {
-                        String exampleName = errorName + "Example" + (trait.getExamples().size() > 1 ? (i + 1) : "");
-                        String refKey = errorName + (trait.getExamples().size() > 1 ? String.valueOf(i + 1) : "");
+                    ObjectNode ref = ObjectNode.builder()
+                            .withMember("$ref", "#/components/examples/" + errorName)
+                            .build();
 
-                        ObjectNode ref = ObjectNode.builder()
-                                .withMember("$ref", "#/components/examples/" + exampleName)
-                                .build();
-
-                        examplesForResponse.withMember(refKey, ref);
-                    }
+                    examplesForResponse.withMember(errorName, ref);
                 }
             }
 
