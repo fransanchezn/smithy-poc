@@ -5,8 +5,6 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
 import software.amazon.smithy.model.shapes.MemberShape;
-import software.amazon.smithy.model.shapes.Shape;
-import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.openapi.fromsmithy.Context;
@@ -14,16 +12,14 @@ import software.amazon.smithy.openapi.fromsmithy.OpenApiMapper;
 import software.amazon.smithy.openapi.model.OpenApi;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * OpenAPI mapper that transforms "default" to "const" for members annotated with @const trait.
+ * OpenAPI mapper that adds "const" for members annotated with @const trait.
  *
- * When a structure member has both a default value and the @const trait, this mapper
- * replaces the OpenAPI "default" property with "const" in the generated schema.
+ * When a structure member has the @const trait, this mapper adds an OpenAPI "const"
+ * property with the value specified in the trait annotation.
  */
 public final class ConstMapper implements OpenApiMapper {
 
@@ -31,7 +27,7 @@ public final class ConstMapper implements OpenApiMapper {
 
     @Override
     public byte getOrder() {
-        // Run early to transform default -> const before other mappers process the schema
+        // Run early to add const before other mappers process the schema
         return 50;
     }
 
@@ -41,15 +37,15 @@ public final class ConstMapper implements OpenApiMapper {
                                  ObjectNode node) {
         Model model = context.getModel();
 
-        // Collect all member shapes with @const trait
-        Set<String> constMembers = new HashSet<>();
+        // Collect all member shapes with @const trait and their values
+        Map<String, Node> constMembers = new HashMap<>();
         for (StructureShape structure : model.getStructureShapes()) {
             for (MemberShape member : structure.getAllMembers().values()) {
-                if (member.hasTrait(ConstTrait.class)) {
-                    // Store the member name as it appears in the parent structure
-                    constMembers.add(structure.getId().getName() + "." + member.getMemberName());
-                    LOGGER.fine("Found @const member: " + structure.getId().getName() + "." + member.getMemberName());
-                }
+                member.getTrait(ConstTrait.class).ifPresent(constTrait -> {
+                    String key = structure.getId().getName() + "." + member.getMemberName();
+                    constMembers.put(key, constTrait.getValue());
+                    LOGGER.fine("Found @const member: " + key + " = " + constTrait.getValue());
+                });
             }
         }
 
@@ -57,7 +53,7 @@ public final class ConstMapper implements OpenApiMapper {
             return node;
         }
 
-        // Process components/schemas to transform default -> const for @const members
+        // Process components/schemas to add const for @const members
         ObjectNode components = node.getObjectMember("components").orElse(ObjectNode.builder().build());
         ObjectNode schemas = components.getObjectMember("schemas").orElse(ObjectNode.builder().build());
 
@@ -76,7 +72,7 @@ public final class ConstMapper implements OpenApiMapper {
         return node.withMember("components", components);
     }
 
-    private ObjectNode processSchemaProperties(String schemaName, ObjectNode schema, Set<String> constMembers) {
+    private ObjectNode processSchemaProperties(String schemaName, ObjectNode schema, Map<String, Node> constMembers) {
         ObjectNode properties = schema.getObjectMember("properties").orElse(null);
         if (properties == null) {
             return schema;
@@ -96,22 +92,24 @@ public final class ConstMapper implements OpenApiMapper {
             String memberKey = schemaName + "." + propName;
             String baseMemberKey = baseSchemaName + "." + propName;
 
-            boolean shouldConvert = (constMembers.contains(memberKey) || constMembers.contains(baseMemberKey))
-                    && propSchema.getMember("default").isPresent();
+            Node constValue = constMembers.get(memberKey);
+            if (constValue == null) {
+                constValue = constMembers.get(baseMemberKey);
+            }
 
-            if (shouldConvert) {
-                // Transform default to const
-                Node defaultValue = propSchema.getMember("default").get();
+            if (constValue != null) {
+                // Add const value from the trait
                 ObjectNode.Builder updatedProp = ObjectNode.builder();
 
                 for (Map.Entry<String, Node> field : propSchema.getStringMap().entrySet()) {
+                    // Remove default if present since we're using const
                     if (!"default".equals(field.getKey())) {
                         updatedProp.withMember(field.getKey(), field.getValue());
                     }
                 }
-                updatedProp.withMember("const", defaultValue);
+                updatedProp.withMember("const", constValue);
 
-                LOGGER.fine("Transformed default to const for " + memberKey + ": " + defaultValue);
+                LOGGER.fine("Added const for " + memberKey + ": " + constValue);
                 updatedProperties.withMember(propName, updatedProp.build());
                 hasChanges = true;
             } else {

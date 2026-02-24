@@ -19,17 +19,17 @@ namespace com.example
 @error("client")
 @httpError(422)
 structure AccountSuspendedDomainError with [DomainErrorMixin] {
-    @const
+    @const("Account Suspended")
     @required
-    title: String = "Account Suspended"
+    title: String
 
-    @const
+    @const(422)
     @required
-    status: Integer = 422
+    status: Integer
 
-    @const
+    @const("ACCOUNT_SUSPENDED")
     @required
-    code: String = "ACCOUNT_SUSPENDED"
+    code: String
 
     @required
     attributes: AccountSuspendedAttributes

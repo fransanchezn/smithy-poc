@@ -23,11 +23,11 @@ structure ValidationErrorDetailMixin {
 @mixin
 @validationError
 structure ValidationErrorMixin with [ProblemDetailMixin] {
-    @const
+    @const("/errors/types/validation")
     @required
-    type: String = "/errors/types/validation"
+    type: String
 
-    @const
+    @const("Validation Problem")
     @required
-    title: String = "Validation Problem"
+    title: String
 }

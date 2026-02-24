@@ -1,47 +1,36 @@
 package com.example.traits;
 
 import software.amazon.smithy.model.node.Node;
-import software.amazon.smithy.model.node.ObjectNode;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.SourceLocation;
 import software.amazon.smithy.model.traits.AbstractTrait;
-import software.amazon.smithy.model.traits.AbstractTraitBuilder;
 import software.amazon.smithy.model.traits.Trait;
-import software.amazon.smithy.utils.SmithyBuilder;
-import software.amazon.smithy.utils.ToSmithyBuilder;
 
 /**
- * Marker trait that indicates a member has a constant value that cannot change.
- * When applied to a member with a default value, generates OpenAPI "const" instead of "default".
+ * Trait that indicates a member has a constant value that cannot change.
+ * The value provided in the annotation will be used as the OpenAPI "const" value.
  */
-public final class ConstTrait extends AbstractTrait implements ToSmithyBuilder<ConstTrait> {
+public final class ConstTrait extends AbstractTrait {
 
     public static final ShapeId ID = ShapeId.from("com.example#const");
 
-    private ConstTrait(Builder builder) {
-        super(ID, builder.getSourceLocation());
+    private final Node value;
+
+    public ConstTrait(Node value) {
+        super(ID, value.getSourceLocation());
+        this.value = value;
+    }
+
+    /**
+     * Gets the constant value.
+     */
+    public Node getValue() {
+        return value;
     }
 
     @Override
     protected Node createNode() {
-        return ObjectNode.builder().build();
-    }
-
-    @Override
-    public SmithyBuilder<ConstTrait> toBuilder() {
-        return builder().sourceLocation(getSourceLocation());
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static final class Builder extends AbstractTraitBuilder<ConstTrait, Builder> {
-        private Builder() {}
-
-        @Override
-        public ConstTrait build() {
-            return new ConstTrait(this);
-        }
+        return value;
     }
 
     public static final class Provider extends AbstractTrait.Provider {
@@ -51,7 +40,7 @@ public final class ConstTrait extends AbstractTrait implements ToSmithyBuilder<C
 
         @Override
         public Trait createTrait(ShapeId target, Node value) {
-            return builder().sourceLocation(value).build();
+            return new ConstTrait(value);
         }
     }
 }

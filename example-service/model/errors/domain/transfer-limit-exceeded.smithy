@@ -19,17 +19,17 @@ namespace com.example
 @error("client")
 @httpError(422)
 structure TransferLimitExceededDomainError with [DomainErrorMixin] {
-    @const
+    @const("Transfer Limit Exceeded")
     @required
-    title: String = "Transfer Limit Exceeded"
+    title: String
 
-    @const
+    @const(422)
     @required
-    status: Integer = 422
+    status: Integer
 
-    @const
+    @const("TRANSFER_LIMIT_EXCEEDED")
     @required
-    code: String = "TRANSFER_LIMIT_EXCEEDED"
+    code: String
 
     @required
     attributes: TransferLimitAttributes

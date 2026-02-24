@@ -4,9 +4,9 @@ namespace com.example
 
 // ------------ MissingValue Validation Error ------------
 structure MissingValueValidationDetail with [ValidationErrorDetailMixin] {
-    @const
+    @const("missing_value")
     @required
-    code: String = "missing_value"
+    code: String
 }
 
 list MissingValueValidationDetailList {
@@ -36,9 +36,9 @@ list MissingValueValidationDetailList {
 @error("client")
 @httpError(400)
 structure MissingValueValidationError with [ValidationErrorMixin] {
-    @const
+    @const(400)
     @required
-    status: Integer = 400
+    status: Integer
 
     @required
     errors: MissingValueValidationDetailList

@@ -9,9 +9,9 @@ structure domainError {}
 @mixin
 @domainError
 structure DomainErrorMixin with [ProblemDetailMixin] {
-    @const
+    @const("https://errors.example.com/domain-error")
     @required
-    type: String = "https://errors.example.com/domain-error"
+    type: String
 
     @required
     code: String

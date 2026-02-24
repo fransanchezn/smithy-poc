@@ -9,9 +9,9 @@ structure InvalidFormatAttributes {
 }
 
 structure InvalidFormatValidationDetail with [ValidationErrorDetailMixin] {
-    @const
+    @const("invalid_format")
     @required
-    code: String = "invalid_format"
+    code: String
 
     attributes: InvalidFormatAttributes
 }
@@ -44,9 +44,9 @@ list InvalidFormatValidationDetailList {
 @error("client")
 @httpError(400)
 structure InvalidFormatValidationError with [ValidationErrorMixin] {
-    @const
+    @const(400)
     @required
-    status: Integer = 400
+    status: Integer
 
     @required
     errors: InvalidFormatValidationDetailList
