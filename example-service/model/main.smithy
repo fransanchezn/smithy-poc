@@ -27,9 +27,9 @@ operation ListUsers {
 
     errors: [
         // Validation errors
-        GenericValidationError
+        ValidationProblemDetail
         // Domain errors
-        AccountSuspendedDomainError
+        AccountSuspendedDomainProblemDetail
     ]
 }
 
@@ -50,10 +50,10 @@ operation GetUser {
 
     errors: [
         // Validation errors
-        GenericValidationError
+        ValidationProblemDetail
         // Domain errors
-        AccountSuspendedDomainError
-        TransferLimitExceededDomainError
+        AccountSuspendedDomainProblemDetail
+        TransferLimitExceededDomainProblemDetail
     ]
 }
 
@@ -75,10 +75,10 @@ operation CreateUser {
 
     errors: [
         // Validation errors
-        GenericValidationError
+        ValidationProblemDetail
         // Domain errors
-        AccountSuspendedDomainError
-        TransferLimitExceededDomainError
+        AccountSuspendedDomainProblemDetail
+        TransferLimitExceededDomainProblemDetail
     ]
 }
 
@@ -94,10 +94,10 @@ operation DeleteUser {
 
     errors: [
         // Validation errors
-        GenericValidationError
+        ValidationProblemDetail
         // Domain errors
-        AccountSuspendedDomainError
-        TransferLimitExceededDomainError
+        AccountSuspendedDomainProblemDetail
+        TransferLimitExceededDomainProblemDetail
     ]
 }
 

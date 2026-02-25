@@ -15,7 +15,7 @@ structure TransferLimitAttributes {
 
 @error("client")
 @httpError(422)
-structure TransferLimitExceededDomainError with [DomainErrorMixin] {
+structure TransferLimitExceededDomainProblemDetail with [DomainProblemDetailMixin] {
     @const("Transfer Limit Exceeded")
     @required
     title: String

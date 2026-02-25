@@ -24,24 +24,3 @@ structure InvalidFormatValidationDetail with [ValidationErrorDetailMixin] {
 
     attributes: InvalidFormatAttributes
 }
-
-list InvalidFormatValidationDetailList {
-    member: InvalidFormatValidationDetail
-}
-
-@error("client")
-@httpError(400)
-structure InvalidFormatValidationError with [ValidationErrorMixin] {
-    @const(400)
-    @required
-    status: Integer
-
-    @memberExample("Validation failed")
-    detail: String
-
-    @memberExample("/api/v1/users")
-    instance: String
-
-    @required
-    errors: InvalidFormatValidationDetailList
-}
