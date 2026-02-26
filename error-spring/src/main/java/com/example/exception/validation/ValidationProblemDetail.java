@@ -76,7 +76,7 @@ public final class ValidationProblemDetail extends ProblemDetail {
     }
 
     @JsonSetter(ERRORS_PROPERTY)
-    protected void setErrors(List<ValidationError> errors) {
+    private void setErrors(List<ValidationError> errors) {
       clearErrors();
       for (ValidationError error : errors) {
         addError(error);

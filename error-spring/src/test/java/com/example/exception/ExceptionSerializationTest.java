@@ -42,7 +42,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
             assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
             assertThat(deserialized.getStatus()).isEqualTo(401);
             assertThat(deserialized.getDetail()).isEqualTo("Invalid token");
@@ -55,7 +55,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
             assertThat(deserialized.getTitle()).isEqualTo("Forbidden");
             assertThat(deserialized.getStatus()).isEqualTo(403);
             assertThat(deserialized.getDetail()).isEqualTo("Insufficient permissions");
@@ -81,7 +81,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
             assertThat(deserialized.getTitle()).isEqualTo("Internal Server Error");
             assertThat(deserialized.getStatus()).isEqualTo(500);
             assertThat(deserialized.getDetail()).isEqualTo("Database connection failed");
@@ -94,7 +94,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
             assertThat(deserialized.getTitle()).isEqualTo("Service Unavailable");
             assertThat(deserialized.getStatus()).isEqualTo(503);
             assertThat(deserialized.getDetail()).isEqualTo("Service is under maintenance");
@@ -123,7 +123,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             TransferLimitExceededProblemDetail deserialized = objectMapper.readValue(json, TransferLimitExceededProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
             assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
             assertThat(deserialized.getStatus()).isEqualTo(422);
             assertThat(deserialized.getDetail()).isEqualTo("Your transfer exceeds the daily limit");
@@ -142,7 +142,7 @@ class ExceptionSerializationTest {
             String json = objectMapper.writeValueAsString(exception.getBody());
             AccountSuspendedProblemDetail deserialized = objectMapper.readValue(json, AccountSuspendedProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
             assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
             assertThat(deserialized.getStatus()).isEqualTo(422);
             assertThat(deserialized.getDetail()).isEqualTo("Account access denied");

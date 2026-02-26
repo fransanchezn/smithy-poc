@@ -21,7 +21,7 @@ import java.util.Optional;
 public abstract sealed class DomainProblemDetail extends ProblemDetail
         permits TransferLimitExceededProblemDetail, AccountSuspendedProblemDetail {
 
-    private static final URI TYPE = URI.create("https://errors.example.com/domain-error");
+    private static final URI TYPE = URI.create("/errors/types/domain");
     private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
     private static final String CODE_PROPERTY = "code";
     protected static final String ATTRIBUTES_PROPERTY = "attributes";

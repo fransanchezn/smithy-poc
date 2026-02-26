@@ -10,7 +10,7 @@ import java.net.URI;
  */
 public final class AccessProblemDetail extends ProblemDetail {
 
-    private static final URI TYPE = URI.create("https://errors.example.com/access-error");
+    private static final URI TYPE = URI.create("/errors/types/access");
 
     public AccessProblemDetail() {
         super();

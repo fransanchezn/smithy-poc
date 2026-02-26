@@ -23,8 +23,4 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
     public static AccessErrorResponseException forbidden(String detail) {
         return new AccessErrorResponseException(AccessProblemDetail.forbidden(detail));
     }
-
-    public static AccessErrorResponseException of(HttpStatus status, String title, String detail) {
-        return new AccessErrorResponseException(AccessProblemDetail.of(status, title, detail));
-    }
 }

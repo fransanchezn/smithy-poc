@@ -3,7 +3,7 @@ $version: "2"
 namespace com.example
 
 // ------------ MissingValue Validation Error ------------
-structure MissingValueValidationDetail with [ValidationErrorDetailMixin] {
+structure MissingValueValidationErrorDetail with [ValidationErrorDetailMixin] {
     @const("missing_value")
     @required
     code: String

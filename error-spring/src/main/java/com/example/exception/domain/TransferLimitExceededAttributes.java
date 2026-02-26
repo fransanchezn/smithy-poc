@@ -7,5 +7,6 @@ import java.math.BigDecimal;
 /**
  * Type-safe attributes for transfer limit exceeded errors.
  */
-public record TransferLimitExceededAttributes(BigDecimal amount, String currency) implements ErrorAttributes {
+public record TransferLimitExceededAttributes(BigDecimal amount, String currency) implements
+    ErrorAttributes {
 }

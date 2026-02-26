@@ -6,7 +6,7 @@ namespace com.example
 structure TransferLimitAttributes {
     @memberExample(15000.00)
     @required
-    amount: Double
+    amount: BigDecimal
 
     @memberExample("USD")
     @required

@@ -39,7 +39,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
             assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
             assertThat(deserialized.getStatus()).isEqualTo(401);
             assertThat(deserialized.getDetail()).isEqualTo("Invalid credentials");
@@ -52,7 +52,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             AccessProblemDetail deserialized = objectMapper.readValue(json, AccessProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/access-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
             assertThat(deserialized.getTitle()).isEqualTo("Forbidden");
             assertThat(deserialized.getStatus()).isEqualTo(403);
             assertThat(deserialized.getDetail()).isEqualTo("Access denied");
@@ -69,7 +69,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
             assertThat(deserialized.getTitle()).isEqualTo("Internal Server Error");
             assertThat(deserialized.getStatus()).isEqualTo(500);
             assertThat(deserialized.getDetail()).isEqualTo("Something went wrong");
@@ -82,7 +82,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             ServerProblemDetail deserialized = objectMapper.readValue(json, ServerProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/server-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
             assertThat(deserialized.getTitle()).isEqualTo("Service Unavailable");
             assertThat(deserialized.getStatus()).isEqualTo(503);
             assertThat(deserialized.getDetail()).isEqualTo("Service is down");
@@ -103,7 +103,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             TransferLimitExceededProblemDetail deserialized = objectMapper.readValue(json, TransferLimitExceededProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
             assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
             assertThat(deserialized.getStatus()).isEqualTo(422);
             assertThat(deserialized.getDetail()).isEqualTo("Transfer amount exceeds your daily limit");
@@ -122,7 +122,7 @@ class ProblemDetailSerializationTest {
             String json = objectMapper.writeValueAsString(original);
             AccountSuspendedProblemDetail deserialized = objectMapper.readValue(json, AccountSuspendedProblemDetail.class);
 
-            assertThat(deserialized.getType()).isEqualTo(URI.create("https://errors.example.com/domain-error"));
+            assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
             assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
             assertThat(deserialized.getStatus()).isEqualTo(422);
             assertThat(deserialized.getDetail()).isEqualTo("Your account has been suspended");

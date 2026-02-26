@@ -28,7 +28,8 @@ structure ValidationProblemDetailMixin with [ProblemDetailMixin] {
     @memberExample("/api/v1/users")
     instance: String
 
-    errors: ValidationErrorDetailMixinUnionList
+    @required
+    errors: ValidationErrorDetailUnionList
 }
 
 /// Base mixin for a single validation error detail
@@ -47,13 +48,13 @@ structure ValidationErrorDetailMixin {
     ref: String
 }
 
-list ValidationErrorDetailMixinUnionList {
-    member: ValidationErrorDetailMixinUnion
+list ValidationErrorDetailUnionList {
+    member: ValidationErrorDetailUnion
 }
 
-union ValidationErrorDetailMixinUnion {
-    missingValueValidationDetail: MissingValueValidationDetail
-    invalidFormatValidationDetail: InvalidFormatValidationDetail
+union ValidationErrorDetailUnion {
+    missingValueValidationErrorDetail: MissingValueValidationErrorDetail
+    invalidFormatValidationErrorDetail: InvalidFormatValidationErrorDetail
 }
 
 @error("client")
@@ -72,5 +73,6 @@ structure ValidationProblemDetail with [ValidationProblemDetailMixin] {
             }
         }
     ])
-    errors: ValidationErrorDetailMixinUnionList
+    @required
+    errors: ValidationErrorDetailUnionList
 }

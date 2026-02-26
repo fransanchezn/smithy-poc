@@ -27,8 +27,4 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
     public static ServerErrorResponseException serviceUnavailable(String detail) {
         return new ServerErrorResponseException(ServerProblemDetail.serviceUnavailable(detail));
     }
-
-    public static ServerErrorResponseException of(HttpStatus status, String title, String detail) {
-        return new ServerErrorResponseException(ServerProblemDetail.of(status, title, detail));
-    }
 }

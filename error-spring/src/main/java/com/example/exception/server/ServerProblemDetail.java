@@ -10,7 +10,7 @@ import java.net.URI;
  */
 public final class ServerProblemDetail extends ProblemDetail {
 
-    private static final URI TYPE = URI.create("https://errors.example.com/server-error");
+    private static final URI TYPE = URI.create("/errors/types/server");
 
     public ServerProblemDetail() {
         super();
@@ -23,10 +23,6 @@ public final class ServerProblemDetail extends ProblemDetail {
         if (detail != null) {
             setDetail(detail);
         }
-    }
-
-    public static ServerProblemDetail of(HttpStatus status, String title, String detail) {
-        return new ServerProblemDetail(status, title, detail);
     }
 
     public static ServerProblemDetail internalServerError(String detail) {
