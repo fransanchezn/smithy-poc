@@ -22,4 +22,20 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
   public static AccessErrorResponseException forbidden(String detail) {
     return new AccessErrorResponseException(AccessProblemDetail.forbidden(detail));
   }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static final class Builder
+      extends ApiErrorResponseException.Builder<AccessProblemDetail, AccessErrorResponseException> {
+
+    private Builder() {
+    }
+
+    @Override
+    public AccessErrorResponseException build() {
+      return new AccessErrorResponseException(problemDetail, cause);
+    }
+  }
 }

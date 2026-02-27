@@ -53,4 +53,31 @@ public abstract sealed class DomainProblemDetail extends ProblemDetail
         .map(it -> it.get(ATTRIBUTES_PROPERTY))
         .orElse(null);
   }
+
+  protected abstract static class Builder<A extends ErrorAttributes, T extends DomainProblemDetail> {
+
+    protected HttpStatus status = DEFAULT_STATUS;
+    protected String detail;
+    protected A attributes;
+
+    protected Builder() {
+    }
+
+    public Builder<A, T> status(HttpStatus status) {
+      this.status = status;
+      return this;
+    }
+
+    public Builder<A, T> detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public Builder<A, T> attributes(A attributes) {
+      this.attributes = attributes;
+      return this;
+    }
+
+    public abstract T build();
+  }
 }

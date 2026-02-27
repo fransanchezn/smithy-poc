@@ -91,4 +91,30 @@ public final class ValidationProblemDetail extends ProblemDetail {
       addError(error);
     }
   }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static final class Builder {
+
+    private final List<ValidationError> errors = new ArrayList<>();
+
+    private Builder() {
+    }
+
+    public Builder error(ValidationError error) {
+      this.errors.add(error);
+      return this;
+    }
+
+    public Builder errors(List<? extends ValidationError> errors) {
+      this.errors.addAll(errors);
+      return this;
+    }
+
+    public ValidationProblemDetail build() {
+      return new ValidationProblemDetail(errors);
+    }
+  }
 }

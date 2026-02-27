@@ -22,8 +22,24 @@ public final class MissingValueValidationError extends ValidationError {
     this(detail, ref, new MissingValueAttributes(missingField));
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   @Override
   public MissingValueAttributes getAttributes() {
     return (MissingValueAttributes) super.getAttributes();
+  }
+
+  public static final class Builder
+      extends ValidationError.Builder<MissingValueAttributes, MissingValueValidationError> {
+
+    private Builder() {
+    }
+
+    @Override
+    public MissingValueValidationError build() {
+      return new MissingValueValidationError(detail, ref, attributes);
+    }
   }
 }

@@ -29,4 +29,11 @@ public abstract sealed class DomainErrorResponseException extends ApiErrorRespon
   public ErrorAttributes getAttributes() {
     return getProblemDetail().getAttributes();
   }
+
+  protected abstract static class Builder<P extends DomainProblemDetail, T extends DomainErrorResponseException>
+      extends ApiErrorResponseException.Builder<P, T> {
+
+    protected Builder() {
+    }
+  }
 }

@@ -17,6 +17,10 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     super(problemDetail);
   }
 
+  public ValidationErrorResponseException(ValidationProblemDetail problemDetail, Throwable cause) {
+    super(problemDetail, cause);
+  }
+
   public ValidationErrorResponseException(List<? extends ValidationError> errors) {
     super(new ValidationProblemDetail(errors));
   }
@@ -33,6 +37,10 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
       String missingField) {
     return new ValidationErrorResponseException(
         ValidationProblemDetail.missingValue(detail, ref, missingField));
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   public ValidationProblemDetail getProblemDetail() {
@@ -58,5 +66,17 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
 
   public List<ValidationError> getErrors() {
     return getProblemDetail().getErrors();
+  }
+
+  public static final class Builder
+      extends ApiErrorResponseException.Builder<ValidationProblemDetail, ValidationErrorResponseException> {
+
+    private Builder() {
+    }
+
+    @Override
+    public ValidationErrorResponseException build() {
+      return new ValidationErrorResponseException(problemDetail, cause);
+    }
   }
 }

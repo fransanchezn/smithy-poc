@@ -11,12 +11,21 @@ public final class TransferLimitExceededException extends DomainErrorResponseExc
     super(problemDetail);
   }
 
+  public TransferLimitExceededException(TransferLimitExceededProblemDetail problemDetail,
+      Throwable cause) {
+    super(problemDetail, cause);
+  }
+
   public TransferLimitExceededException(String detail, TransferLimitExceededAttributes attributes) {
     super(new TransferLimitExceededProblemDetail(detail, attributes));
   }
 
   public TransferLimitExceededException(String detail, BigDecimal amount, String currency) {
     super(new TransferLimitExceededProblemDetail(detail, amount, currency));
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   @Override
@@ -27,5 +36,17 @@ public final class TransferLimitExceededException extends DomainErrorResponseExc
   @Override
   public TransferLimitExceededAttributes getAttributes() {
     return getProblemDetail().getAttributes();
+  }
+
+  public static final class Builder
+      extends DomainErrorResponseException.Builder<TransferLimitExceededProblemDetail, TransferLimitExceededException> {
+
+    private Builder() {
+    }
+
+    @Override
+    public TransferLimitExceededException build() {
+      return new TransferLimitExceededException(problemDetail, cause);
+    }
   }
 }

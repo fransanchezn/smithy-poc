@@ -10,12 +10,13 @@ import org.springframework.http.ProblemDetail;
 public final class ServerProblemDetail extends ProblemDetail {
 
   private static final URI TYPE = URI.create("/errors/types/server");
+  private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
   public ServerProblemDetail() {
     super();
   }
 
-  private ServerProblemDetail(HttpStatus status, String title, String detail) {
+  ServerProblemDetail(HttpStatus status, String title, String detail) {
     super(status.value());
     setType(TYPE);
     setTitle(title);
@@ -31,5 +32,38 @@ public final class ServerProblemDetail extends ProblemDetail {
 
   public static ServerProblemDetail serviceUnavailable(String detail) {
     return new ServerProblemDetail(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", detail);
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static final class Builder {
+
+    private HttpStatus status = DEFAULT_STATUS;
+    private String title;
+    private String detail;
+
+    private Builder() {
+    }
+
+    public Builder status(HttpStatus status) {
+      this.status = status;
+      return this;
+    }
+
+    public Builder title(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public Builder detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public ServerProblemDetail build() {
+      return new ServerProblemDetail(status, title, detail);
+    }
   }
 }

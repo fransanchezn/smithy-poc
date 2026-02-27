@@ -26,4 +26,20 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
   public static ServerErrorResponseException serviceUnavailable(String detail) {
     return new ServerErrorResponseException(ServerProblemDetail.serviceUnavailable(detail));
   }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static final class Builder
+      extends ApiErrorResponseException.Builder<ServerProblemDetail, ServerErrorResponseException> {
+
+    private Builder() {
+    }
+
+    @Override
+    public ServerErrorResponseException build() {
+      return new ServerErrorResponseException(problemDetail, cause);
+    }
+  }
 }

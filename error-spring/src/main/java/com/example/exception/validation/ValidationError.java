@@ -44,4 +44,31 @@ public abstract sealed class ValidationError
   public ErrorAttributes getAttributes() {
     return attributes;
   }
+
+  protected abstract static class Builder<A extends ErrorAttributes, T extends ValidationError> {
+
+    protected String detail;
+    protected String ref;
+    protected A attributes;
+
+    protected Builder() {
+    }
+
+    public Builder<A, T> detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public Builder<A, T> ref(String ref) {
+      this.ref = ref;
+      return this;
+    }
+
+    public Builder<A, T> attributes(A attributes) {
+      this.attributes = attributes;
+      return this;
+    }
+
+    public abstract T build();
+  }
 }

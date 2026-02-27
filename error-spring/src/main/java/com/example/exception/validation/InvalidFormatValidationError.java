@@ -22,8 +22,24 @@ public final class InvalidFormatValidationError extends ValidationError {
     this(detail, ref, new InvalidFormatAttributes(pattern));
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   @Override
   public InvalidFormatAttributes getAttributes() {
     return (InvalidFormatAttributes) super.getAttributes();
+  }
+
+  public static final class Builder
+      extends ValidationError.Builder<InvalidFormatAttributes, InvalidFormatValidationError> {
+
+    private Builder() {
+    }
+
+    @Override
+    public InvalidFormatValidationError build() {
+      return new InvalidFormatValidationError(detail, ref, attributes);
+    }
   }
 }
