@@ -1,7 +1,6 @@
 package com.example.exception.domain;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
-import java.math.BigDecimal;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -12,22 +11,17 @@ public final class TransferLimitExceededProblemDetail extends DomainProblemDetai
   private static final String CODE = "TRANSFER_LIMIT_EXCEEDED";
   private static final String TITLE = "Transfer Limit Exceeded";
 
-  public TransferLimitExceededProblemDetail() {
+  TransferLimitExceededProblemDetail() {
     super(CODE, TITLE, null, null);
   }
 
-  public TransferLimitExceededProblemDetail(String detail,
-      TransferLimitExceededAttributes attributes) {
-    super(CODE, TITLE, detail, attributes);
-  }
-
-  public TransferLimitExceededProblemDetail(HttpStatus status, String detail,
+  private TransferLimitExceededProblemDetail(HttpStatus status, String detail,
       TransferLimitExceededAttributes attributes) {
     super(status, CODE, TITLE, detail, attributes);
   }
 
-  public TransferLimitExceededProblemDetail(String detail, BigDecimal amount, String currency) {
-    this(detail, new TransferLimitExceededAttributes(amount, currency));
+  public static Builder builder() {
+    return new Builder();
   }
 
   @Override
@@ -38,10 +32,6 @@ public final class TransferLimitExceededProblemDetail extends DomainProblemDetai
   @JsonSetter(ATTRIBUTES_PROPERTY)
   private void setAttributes(TransferLimitExceededAttributes attributes) {
     setProperty(ATTRIBUTES_PROPERTY, attributes);
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static final class Builder

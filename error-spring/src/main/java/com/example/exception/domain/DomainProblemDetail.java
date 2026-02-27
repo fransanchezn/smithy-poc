@@ -54,7 +54,7 @@ public abstract sealed class DomainProblemDetail extends ProblemDetail
         .orElse(null);
   }
 
-  protected abstract static class Builder<A extends ErrorAttributes, T extends DomainProblemDetail> {
+  public abstract static class Builder<A extends ErrorAttributes, T extends DomainProblemDetail> {
 
     protected HttpStatus status = DEFAULT_STATUS;
     protected String detail;

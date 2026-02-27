@@ -11,15 +11,11 @@ public final class MissingValueValidationError extends ValidationError {
   private static final String CODE = "missing_value";
 
   @JsonCreator
-  public MissingValueValidationError(
+  private MissingValueValidationError(
       @JsonProperty("detail") String detail,
       @JsonProperty("ref") String ref,
       @JsonProperty("attributes") MissingValueAttributes attributes) {
     super(CODE, detail, ref, attributes);
-  }
-
-  public MissingValueValidationError(String detail, String ref, String missingField) {
-    this(detail, ref, new MissingValueAttributes(missingField));
   }
 
   public static Builder builder() {

@@ -30,7 +30,7 @@ public abstract sealed class DomainErrorResponseException extends ApiErrorRespon
     return getProblemDetail().getAttributes();
   }
 
-  protected abstract static class Builder<P extends DomainProblemDetail, T extends DomainErrorResponseException>
+  public abstract static class Builder<P extends DomainProblemDetail, T extends DomainErrorResponseException>
       extends ApiErrorResponseException.Builder<P, T> {
 
     protected Builder() {

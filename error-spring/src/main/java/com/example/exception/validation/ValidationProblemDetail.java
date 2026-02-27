@@ -19,62 +19,22 @@ public final class ValidationProblemDetail extends ProblemDetail {
   private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
   private static final String ERRORS_PROPERTY = "errors";
 
-  public ValidationProblemDetail() {
+  ValidationProblemDetail() {
     super(STATUS.value());
     setType(TYPE);
     setTitle(TITLE);
     setProperty(ERRORS_PROPERTY, new ArrayList<ValidationError>());
   }
 
-  public ValidationProblemDetail(List<? extends ValidationError> errors) {
+  private ValidationProblemDetail(List<ValidationError> errors) {
     super(STATUS.value());
     setType(TYPE);
     setTitle(TITLE);
     setProperty(ERRORS_PROPERTY, new ArrayList<>(errors));
   }
 
-  // Factory methods for InvalidFormatValidationError
-
-  public static ValidationProblemDetail invalidFormat(String detail, String ref, String pattern) {
-    return new ValidationProblemDetail()
-        .addError(new InvalidFormatValidationError(detail, ref, pattern));
-  }
-
-  public static ValidationProblemDetail invalidFormat(String detail, String ref,
-      InvalidFormatAttributes attributes) {
-    return new ValidationProblemDetail()
-        .addError(new InvalidFormatValidationError(detail, ref, attributes));
-  }
-
-  // Factory methods for MissingValueValidationError
-
-  public static ValidationProblemDetail missingValue(String detail, String ref,
-      String missingField) {
-    return new ValidationProblemDetail()
-        .addError(new MissingValueValidationError(detail, ref, missingField));
-  }
-
-  public static ValidationProblemDetail missingValue(String detail, String ref,
-      MissingValueAttributes attributes) {
-    return new ValidationProblemDetail()
-        .addError(new MissingValueValidationError(detail, ref, attributes));
-  }
-
-  public ValidationProblemDetail addError(ValidationError error) {
-    getErrors().add(error);
-    return this;
-  }
-
-  public ValidationProblemDetail addInvalidFormat(String detail, String ref, String pattern) {
-    return addError(new InvalidFormatValidationError(detail, ref, pattern));
-  }
-
-  public ValidationProblemDetail addMissingValue(String detail, String ref, String missingField) {
-    return addError(new MissingValueValidationError(detail, ref, missingField));
-  }
-
-  private void clearErrors() {
-    getErrors().clear();
+  public static Builder builder() {
+    return new Builder();
   }
 
   @SuppressWarnings("unchecked")
@@ -86,14 +46,8 @@ public final class ValidationProblemDetail extends ProblemDetail {
 
   @JsonSetter(ERRORS_PROPERTY)
   private void setErrors(List<ValidationError> errors) {
-    clearErrors();
-    for (ValidationError error : errors) {
-      addError(error);
-    }
-  }
-
-  public static Builder builder() {
-    return new Builder();
+    getErrors().clear();
+    getErrors().addAll(errors);
   }
 
   public static final class Builder {

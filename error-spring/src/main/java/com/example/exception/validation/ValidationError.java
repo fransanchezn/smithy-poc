@@ -45,7 +45,7 @@ public abstract sealed class ValidationError
     return attributes;
   }
 
-  protected abstract static class Builder<A extends ErrorAttributes, T extends ValidationError> {
+  public abstract static class Builder<A extends ErrorAttributes, T extends ValidationError> {
 
     protected String detail;
     protected String ref;

@@ -18,7 +18,7 @@ public abstract class ApiErrorResponseException extends ErrorResponseException {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
   }
 
-  protected abstract static class Builder<P extends ProblemDetail, T extends ApiErrorResponseException> {
+  public abstract static class Builder<P extends ProblemDetail, T extends ApiErrorResponseException> {
 
     protected P problemDetail;
     protected Throwable cause;
