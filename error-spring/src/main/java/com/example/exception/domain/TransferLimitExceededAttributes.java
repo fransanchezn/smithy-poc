@@ -1,7 +1,6 @@
 package com.example.exception.domain;
 
 import com.example.exception.ErrorAttributes;
-
 import java.math.BigDecimal;
 
 /**
@@ -9,4 +8,5 @@ import java.math.BigDecimal;
  */
 public record TransferLimitExceededAttributes(BigDecimal amount, String currency) implements
     ErrorAttributes {
+
 }

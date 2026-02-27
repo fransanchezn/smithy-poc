@@ -8,22 +8,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public final class MissingValueValidationError extends ValidationError {
 
-    private static final String CODE = "missing_value";
+  private static final String CODE = "missing_value";
 
-    @JsonCreator
-    public MissingValueValidationError(
-            @JsonProperty("detail") String detail,
-            @JsonProperty("ref") String ref,
-            @JsonProperty("attributes") MissingValueAttributes attributes) {
-        super(CODE, detail, ref, attributes);
-    }
+  @JsonCreator
+  public MissingValueValidationError(
+      @JsonProperty("detail") String detail,
+      @JsonProperty("ref") String ref,
+      @JsonProperty("attributes") MissingValueAttributes attributes) {
+    super(CODE, detail, ref, attributes);
+  }
 
-    public MissingValueValidationError(String detail, String ref, String missingField) {
-        this(detail, ref, new MissingValueAttributes(missingField));
-    }
+  public MissingValueValidationError(String detail, String ref, String missingField) {
+    this(detail, ref, new MissingValueAttributes(missingField));
+  }
 
-    @Override
-    public MissingValueAttributes getAttributes() {
-        return (MissingValueAttributes) super.getAttributes();
-    }
+  @Override
+  public MissingValueAttributes getAttributes() {
+    return (MissingValueAttributes) super.getAttributes();
+  }
 }
