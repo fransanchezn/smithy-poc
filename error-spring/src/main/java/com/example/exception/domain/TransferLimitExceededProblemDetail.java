@@ -8,16 +8,16 @@ import org.springframework.http.HttpStatus;
  */
 public final class TransferLimitExceededProblemDetail extends DomainProblemDetail {
 
-  private static final String CODE = "TRANSFER_LIMIT_EXCEEDED";
+  private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
 
   TransferLimitExceededProblemDetail() {
-    super(CODE, TITLE, null, null);
+    super(CODE.getCode(), TITLE, null, null);
   }
 
   private TransferLimitExceededProblemDetail(HttpStatus status, String detail,
       TransferLimitExceededAttributes attributes) {
-    super(status, CODE, TITLE, detail, attributes);
+    super(status, CODE.getCode(), TITLE, detail, attributes);
   }
 
   public static Builder builder() {

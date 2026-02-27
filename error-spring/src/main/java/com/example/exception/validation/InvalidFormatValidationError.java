@@ -8,14 +8,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public final class InvalidFormatValidationError extends ValidationError {
 
-  private static final String CODE = "invalid_format";
+  private static final ValidationErrorCode CODE = ValidationErrorCode.INVALID_FORMAT;
 
   @JsonCreator
   private InvalidFormatValidationError(
       @JsonProperty("detail") String detail,
       @JsonProperty("ref") String ref,
       @JsonProperty("attributes") InvalidFormatAttributes attributes) {
-    super(CODE, detail, ref, attributes);
+    super(CODE.getCode(), detail, ref, attributes);
   }
 
   public static Builder builder() {

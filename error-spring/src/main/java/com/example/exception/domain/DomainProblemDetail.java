@@ -14,8 +14,8 @@ import org.springframework.http.ProblemDetail;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "code")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = TransferLimitExceededProblemDetail.class, name = "TRANSFER_LIMIT_EXCEEDED"),
-    @JsonSubTypes.Type(value = AccountSuspendedProblemDetail.class, name = "ACCOUNT_SUSPENDED")
+    @JsonSubTypes.Type(value = TransferLimitExceededProblemDetail.class, name = "transfer.transfer_limit_exceeded"),
+    @JsonSubTypes.Type(value = AccountSuspendedProblemDetail.class, name = "account.account_suspended")
 })
 public abstract sealed class DomainProblemDetail extends ProblemDetail
     permits TransferLimitExceededProblemDetail, AccountSuspendedProblemDetail {

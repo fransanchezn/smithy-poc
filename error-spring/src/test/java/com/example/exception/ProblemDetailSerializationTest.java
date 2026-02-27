@@ -130,7 +130,7 @@ class ProblemDetailSerializationTest {
       assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Transfer amount exceeds your daily limit");
-      assertThat(deserialized.getCode()).isEqualTo("TRANSFER_LIMIT_EXCEEDED");
+      assertThat(deserialized.getCode()).isEqualTo("transfer.transfer_limit_exceeded");
       assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo("15000.00");
       assertThat(deserialized.getAttributes().currency()).isEqualTo("USD");
     }
@@ -152,7 +152,7 @@ class ProblemDetailSerializationTest {
       assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Your account has been suspended");
-      assertThat(deserialized.getCode()).isEqualTo("ACCOUNT_SUSPENDED");
+      assertThat(deserialized.getCode()).isEqualTo("account.account_suspended");
       assertThat(deserialized.getAttributes().reason()).isEqualTo("Violation of terms of service");
     }
   }

@@ -181,7 +181,7 @@ class ExceptionSerializationTest {
       assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Your transfer exceeds the daily limit");
-      assertThat(deserialized.getCode()).isEqualTo("TRANSFER_LIMIT_EXCEEDED");
+      assertThat(deserialized.getCode()).isEqualTo("transfer.transfer_limit_exceeded");
       assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo("50000.00");
       assertThat(deserialized.getAttributes().currency()).isEqualTo("EUR");
     }
@@ -205,7 +205,7 @@ class ExceptionSerializationTest {
       assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Account access denied");
-      assertThat(deserialized.getCode()).isEqualTo("ACCOUNT_SUSPENDED");
+      assertThat(deserialized.getCode()).isEqualTo("account.account_suspended");
       assertThat(deserialized.getAttributes().reason()).isEqualTo("Multiple failed login attempts");
     }
 
@@ -221,7 +221,7 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      assertThat(exception.getCode()).isEqualTo("TRANSFER_LIMIT_EXCEEDED");
+      assertThat(exception.getCode()).isEqualTo("transfer.transfer_limit_exceeded");
       assertThat(exception.getAttributes().amount()).isEqualByComparingTo("1000");
       assertThat(exception.getAttributes().currency()).isEqualTo("USD");
     }
