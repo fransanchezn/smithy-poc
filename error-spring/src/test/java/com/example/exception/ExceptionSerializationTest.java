@@ -2,21 +2,21 @@ package com.example.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.exception.access.AccessErrorResponseException;
 import com.example.exception.access.AccessProblemDetail;
+import com.example.exception.access.PublicAccessErrorResponseException;
 import com.example.exception.domain.AccountSuspendedAttributes;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.AccountSuspendedProblemDetail;
 import com.example.exception.domain.TransferLimitExceededAttributes;
 import com.example.exception.domain.TransferLimitExceededException;
 import com.example.exception.domain.TransferLimitExceededProblemDetail;
-import com.example.exception.server.ServerErrorResponseException;
+import com.example.exception.server.PublicServerErrorResponseException;
 import com.example.exception.server.ServerProblemDetail;
 import com.example.exception.validation.InvalidFormatAttributes;
 import com.example.exception.validation.InvalidFormatValidationError;
 import com.example.exception.validation.MissingValueAttributes;
 import com.example.exception.validation.MissingValueValidationError;
-import com.example.exception.validation.ValidationErrorResponseException;
+import com.example.exception.validation.PublicValidationErrorResponseException;
 import com.example.exception.validation.ValidationProblemDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -43,7 +43,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeUnauthorizedException() throws Exception {
-      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+      PublicAccessErrorResponseException exception = PublicAccessErrorResponseException.builder()
           .problemDetail(AccessProblemDetail.builder()
               .status(HttpStatus.UNAUTHORIZED)
               .title("Unauthorized")
@@ -62,7 +62,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeForbiddenException() throws Exception {
-      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+      PublicAccessErrorResponseException exception = PublicAccessErrorResponseException.builder()
           .problemDetail(AccessProblemDetail.builder()
               .status(HttpStatus.FORBIDDEN)
               .title("Forbidden")
@@ -81,14 +81,14 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldHaveCorrectStatusCode() {
-      AccessErrorResponseException unauthorized = AccessErrorResponseException.builder()
+      PublicAccessErrorResponseException unauthorized = PublicAccessErrorResponseException.builder()
           .problemDetail(AccessProblemDetail.builder()
               .status(HttpStatus.UNAUTHORIZED)
               .title("Unauthorized")
               .detail("test")
               .build())
           .build();
-      AccessErrorResponseException forbidden = AccessErrorResponseException.builder()
+      PublicAccessErrorResponseException forbidden = PublicAccessErrorResponseException.builder()
           .problemDetail(AccessProblemDetail.builder()
               .status(HttpStatus.FORBIDDEN)
               .title("Forbidden")
@@ -106,7 +106,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeInternalServerErrorException() throws Exception {
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
+      PublicServerErrorResponseException exception = PublicServerErrorResponseException.builder()
           .problemDetail(ServerProblemDetail.builder()
               .status(HttpStatus.INTERNAL_SERVER_ERROR)
               .title("Internal Server Error")
@@ -125,7 +125,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeServiceUnavailableException() throws Exception {
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
+      PublicServerErrorResponseException exception = PublicServerErrorResponseException.builder()
           .problemDetail(ServerProblemDetail.builder()
               .status(HttpStatus.SERVICE_UNAVAILABLE)
               .title("Service Unavailable")
@@ -145,7 +145,7 @@ class ExceptionSerializationTest {
     @Test
     void shouldPreserveCause() {
       RuntimeException cause = new RuntimeException("Original error");
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
+      PublicServerErrorResponseException exception = PublicServerErrorResponseException.builder()
           .problemDetail(ServerProblemDetail.builder()
               .status(HttpStatus.INTERNAL_SERVER_ERROR)
               .title("Internal Server Error")
@@ -232,7 +232,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeInvalidFormatErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+      PublicValidationErrorResponseException exception = PublicValidationErrorResponseException.builder()
           .problemDetail(ValidationProblemDetail.builder()
               .error(InvalidFormatValidationError.builder()
                   .detail("Email format is invalid")
@@ -267,7 +267,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeMissingValueErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+      PublicValidationErrorResponseException exception = PublicValidationErrorResponseException.builder()
           .problemDetail(ValidationProblemDetail.builder()
               .error(MissingValueValidationError.builder()
                   .detail("First name is required")
@@ -301,7 +301,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeMixedErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+      PublicValidationErrorResponseException exception = PublicValidationErrorResponseException.builder()
           .problemDetail(ValidationProblemDetail.builder()
               .error(InvalidFormatValidationError.builder()
                   .detail("Invalid email")
@@ -331,7 +331,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldProvideTypedAccessToErrors() {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+      PublicValidationErrorResponseException exception = PublicValidationErrorResponseException.builder()
           .problemDetail(ValidationProblemDetail.builder()
               .error(InvalidFormatValidationError.builder()
                   .detail("Invalid email")
@@ -382,7 +382,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldRoundTripValidationException() throws Exception {
-      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
+      PublicValidationErrorResponseException original = PublicValidationErrorResponseException.builder()
           .problemDetail(ValidationProblemDetail.builder()
               .error(InvalidFormatValidationError.builder()
                   .detail("Invalid format")

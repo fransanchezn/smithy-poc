@@ -3,7 +3,7 @@ package com.example.exception.domain;
 /**
  * Exception thrown when an account is suspended.
  */
-public final class AccountSuspendedException extends DomainErrorResponseException {
+public final class AccountSuspendedException extends PublicDomainErrorResponseException {
 
   private AccountSuspendedException(AccountSuspendedProblemDetail problemDetail, Throwable cause) {
     super(problemDetail, cause);
@@ -24,7 +24,7 @@ public final class AccountSuspendedException extends DomainErrorResponseExceptio
   }
 
   public static final class Builder
-      extends DomainErrorResponseException.Builder<AccountSuspendedProblemDetail, AccountSuspendedException> {
+      extends PublicDomainErrorResponseException.Builder<AccountSuspendedProblemDetail, AccountSuspendedException> {
 
     private Builder() {
     }

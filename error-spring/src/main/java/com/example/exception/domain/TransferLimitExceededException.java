@@ -3,7 +3,7 @@ package com.example.exception.domain;
 /**
  * Exception thrown when a transfer exceeds the allowed limit.
  */
-public final class TransferLimitExceededException extends DomainErrorResponseException {
+public final class TransferLimitExceededException extends PublicDomainErrorResponseException {
 
   private TransferLimitExceededException(TransferLimitExceededProblemDetail problemDetail,
       Throwable cause) {
@@ -25,7 +25,7 @@ public final class TransferLimitExceededException extends DomainErrorResponseExc
   }
 
   public static final class Builder
-      extends DomainErrorResponseException.Builder<TransferLimitExceededProblemDetail, TransferLimitExceededException> {
+      extends PublicDomainErrorResponseException.Builder<TransferLimitExceededProblemDetail, TransferLimitExceededException> {
 
     private Builder() {
     }

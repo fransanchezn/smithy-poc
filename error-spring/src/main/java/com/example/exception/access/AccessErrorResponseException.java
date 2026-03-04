@@ -3,27 +3,28 @@ package com.example.exception.access;
 import com.example.exception.ApiErrorResponseException;
 
 /**
- * Exception for access-related errors (authentication, authorization).
+ * Exception for access-related errors (authentication, authorization). Sealed to only permit public
+ * and internal access exception categories.
  */
-public final class AccessErrorResponseException extends ApiErrorResponseException {
+public abstract sealed class AccessErrorResponseException extends ApiErrorResponseException
+    permits PublicAccessErrorResponseException, InternalAccessErrorResponseException {
 
-  private AccessErrorResponseException(AccessProblemDetail problemDetail, Throwable cause) {
+  protected AccessErrorResponseException(AccessProblemDetail problemDetail) {
+    super(problemDetail);
+  }
+
+  protected AccessErrorResponseException(AccessProblemDetail problemDetail, Throwable cause) {
     super(problemDetail, cause);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public AccessProblemDetail getProblemDetail() {
+    return (AccessProblemDetail) getBody();
   }
 
-  public static final class Builder
-      extends ApiErrorResponseException.Builder<AccessProblemDetail, AccessErrorResponseException> {
+  public abstract static class Builder<T extends AccessErrorResponseException>
+      extends ApiErrorResponseException.Builder<AccessProblemDetail, T> {
 
-    private Builder() {
-    }
-
-    @Override
-    public AccessErrorResponseException build() {
-      return new AccessErrorResponseException(problemDetail, cause);
+    protected Builder() {
     }
   }
 }

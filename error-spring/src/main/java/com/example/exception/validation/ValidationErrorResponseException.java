@@ -5,16 +5,18 @@ import java.util.List;
 
 /**
  * Exception for validation errors. Detail is not supported at root level - each ValidationError has
- * its own detail.
+ * its own detail. Sealed to only permit public and internal validation exception categories.
  */
-public final class ValidationErrorResponseException extends ApiErrorResponseException {
+public abstract sealed class ValidationErrorResponseException extends ApiErrorResponseException
+    permits PublicValidationErrorResponseException, InternalValidationErrorResponseException {
 
-  private ValidationErrorResponseException(ValidationProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  protected ValidationErrorResponseException(ValidationProblemDetail problemDetail) {
+    super(problemDetail);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  protected ValidationErrorResponseException(ValidationProblemDetail problemDetail,
+      Throwable cause) {
+    super(problemDetail, cause);
   }
 
   public ValidationProblemDetail getProblemDetail() {
@@ -25,15 +27,10 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     return getProblemDetail().getErrors();
   }
 
-  public static final class Builder
-      extends ApiErrorResponseException.Builder<ValidationProblemDetail, ValidationErrorResponseException> {
+  public abstract static class Builder<T extends ValidationErrorResponseException>
+      extends ApiErrorResponseException.Builder<ValidationProblemDetail, T> {
 
-    private Builder() {
-    }
-
-    @Override
-    public ValidationErrorResponseException build() {
-      return new ValidationErrorResponseException(problemDetail, cause);
+    protected Builder() {
     }
   }
 }

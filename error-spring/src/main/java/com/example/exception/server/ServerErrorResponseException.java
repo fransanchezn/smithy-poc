@@ -3,27 +3,28 @@ package com.example.exception.server;
 import com.example.exception.ApiErrorResponseException;
 
 /**
- * Exception for server-side errors (internal errors, service unavailable).
+ * Exception for server-side errors (internal errors, service unavailable). Sealed to only permit
+ * public and internal server exception categories.
  */
-public final class ServerErrorResponseException extends ApiErrorResponseException {
+public abstract sealed class ServerErrorResponseException extends ApiErrorResponseException
+    permits PublicServerErrorResponseException, InternalServerErrorResponseException {
 
-  private ServerErrorResponseException(ServerProblemDetail problemDetail, Throwable cause) {
+  protected ServerErrorResponseException(ServerProblemDetail problemDetail) {
+    super(problemDetail);
+  }
+
+  protected ServerErrorResponseException(ServerProblemDetail problemDetail, Throwable cause) {
     super(problemDetail, cause);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public ServerProblemDetail getProblemDetail() {
+    return (ServerProblemDetail) getBody();
   }
 
-  public static final class Builder
-      extends ApiErrorResponseException.Builder<ServerProblemDetail, ServerErrorResponseException> {
+  public abstract static class Builder<T extends ServerErrorResponseException>
+      extends ApiErrorResponseException.Builder<ServerProblemDetail, T> {
 
-    private Builder() {
-    }
-
-    @Override
-    public ServerErrorResponseException build() {
-      return new ServerErrorResponseException(problemDetail, cause);
+    protected Builder() {
     }
   }
 }

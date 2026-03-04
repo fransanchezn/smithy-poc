@@ -4,11 +4,11 @@ import com.example.exception.ApiErrorResponseException;
 import com.example.exception.ErrorAttributes;
 
 /**
- * Exception for domain-specific business errors. Sealed to only permit specific domain exception
- * implementations.
+ * Exception for domain-specific business errors. Sealed to only permit public and internal domain
+ * exception categories.
  */
 public abstract sealed class DomainErrorResponseException extends ApiErrorResponseException
-    permits TransferLimitExceededException, AccountSuspendedException {
+    permits PublicDomainErrorResponseException, InternalDomainErrorResponseException {
 
   protected DomainErrorResponseException(DomainProblemDetail problemDetail) {
     super(problemDetail);
