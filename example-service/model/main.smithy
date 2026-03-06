@@ -27,9 +27,9 @@ operation ListUsers {
 
     errors: [
         // Validation errors
-        ValidationProblemDetail
+        ValidationApiErrorExceptionImpl
         // Domain errors
-        AccountSuspendedDomainProblemDetail
+        AccountSuspendedDomainApiErrorException
     ]
 }
 
@@ -50,10 +50,10 @@ operation GetUser {
 
     errors: [
         // Validation errors
-        ValidationProblemDetail
+        ValidationApiErrorExceptionImpl
         // Domain errors
-        AccountSuspendedDomainProblemDetail
-        TransferLimitExceededDomainProblemDetail
+        AccountSuspendedDomainApiErrorException
+        TransferLimitExceededDomainApiErrorException
     ]
 }
 
@@ -75,10 +75,10 @@ operation CreateUser {
 
     errors: [
         // Validation errors
-        ValidationProblemDetail
+        ValidationApiErrorExceptionImpl
         // Domain errors
-        AccountSuspendedDomainProblemDetail
-        TransferLimitExceededDomainProblemDetail
+        AccountSuspendedDomainApiErrorException
+        TransferLimitExceededDomainApiErrorException
     ]
 }
 
@@ -94,10 +94,10 @@ operation DeleteUser {
 
     errors: [
         // Validation errors
-        ValidationProblemDetail
+        ValidationApiErrorExceptionImpl
         // Domain errors
-        AccountSuspendedDomainProblemDetail
-        TransferLimitExceededDomainProblemDetail
+        AccountSuspendedDomainApiErrorException
+        TransferLimitExceededDomainApiErrorException
     ]
 }
 

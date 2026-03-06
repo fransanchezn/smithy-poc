@@ -9,7 +9,7 @@ structure InvalidFormatAttributes {
     pattern: String
 }
 
-structure InvalidFormatValidationErrorDetail with [ValidationErrorDetailMixin] {
+structure InvalidFormatValidationError with [ValidationErrorMixin] {
     @const("invalid_format")
     @required
     code: String

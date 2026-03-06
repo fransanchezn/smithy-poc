@@ -11,7 +11,7 @@ structure AccountSuspendedAttributes {
 
 @error("client")
 @httpError(422)
-structure AccountSuspendedDomainProblemDetail with [DomainProblemDetailMixin] {
+structure AccountSuspendedDomainApiErrorException with [DomainApiErrorException] {
     @const("Account Suspended")
     @required
     title: String

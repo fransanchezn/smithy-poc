@@ -258,7 +258,7 @@ structure ValidationApiErrorException with [ApiErrorException] {
 }
 
 @mixin
-structure ValidationError {
+structure ValidationErrorMixin {
     @required
     @memberExample("Validation error detail")
     detail: String
@@ -281,9 +281,9 @@ union ValidationErrorUnion {
     invalidFormatValidationError: InvalidFormatValidationError
 }
 
-structure MissingValueValidationError with [ValidationError] {}
+structure MissingValueValidationError with [ValidationErrorMixin] {}
 
-structure InvalidFormatValidationError with [ValidationError] {}
+structure InvalidFormatValidationError with [ValidationErrorMixin] {}
 
 @error("client")
 @httpError(400)
@@ -341,7 +341,7 @@ structure InvalidFormatAttributes {
     pattern: String
 }
 
-structure InvalidFormatValidationError with [ValidationError] {
+structure InvalidFormatValidationError with [ValidationErrorMixin] {
     @const("invalid_format")
     @required
     code: String

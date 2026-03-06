@@ -3,7 +3,7 @@ $version: "2"
 namespace com.example
 
 // ------------ TransferLimitExceeded Domain Error ------------
-structure TransferLimitAttributes {
+structure TransferLimitExceededAttributes {
     @memberExample(15000.00)
     @required
     amount: BigDecimal
@@ -15,7 +15,7 @@ structure TransferLimitAttributes {
 
 @error("client")
 @httpError(422)
-structure TransferLimitExceededDomainProblemDetail with [DomainProblemDetailMixin] {
+structure TransferLimitExceededDomainApiErrorException with [DomainApiErrorException] {
     @const("Transfer Limit Exceeded")
     @required
     title: String
@@ -29,5 +29,5 @@ structure TransferLimitExceededDomainProblemDetail with [DomainProblemDetailMixi
     code: String
 
     @required
-    attributes: TransferLimitAttributes
+    attributes: TransferLimitExceededAttributes
 }

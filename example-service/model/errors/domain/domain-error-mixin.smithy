@@ -8,7 +8,7 @@ structure domainError {}
 
 @mixin
 @domainError
-structure DomainProblemDetailMixin with [ProblemDetailMixin] {
+structure DomainApiErrorException with [ApiErrorException] {
     @const("/errors/types/domain")
     @required
     type: String

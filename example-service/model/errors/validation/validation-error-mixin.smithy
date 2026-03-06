@@ -9,7 +9,7 @@ structure validationError {}
 /// Validation error following RFC 7807 with errors array
 @mixin
 @validationError
-structure ValidationProblemDetailMixin with [ProblemDetailMixin] {
+structure ValidationApiErrorException with [ApiErrorException] {
     @const("/errors/types/validation")
     @required
     type: String
@@ -29,12 +29,12 @@ structure ValidationProblemDetailMixin with [ProblemDetailMixin] {
     instance: String
 
     @required
-    errors: ValidationErrorDetailUnionList
+    errors: ValidationErrorList
 }
 
 /// Base mixin for a single validation error detail
 @mixin
-structure ValidationErrorDetailMixin {
+structure ValidationErrorMixin {
     @required
     @memberExample("Validation error detail")
     detail: String
@@ -48,24 +48,24 @@ structure ValidationErrorDetailMixin {
     ref: String
 }
 
-list ValidationErrorDetailUnionList {
-    member: ValidationErrorDetailUnion
+list ValidationErrorList {
+    member: ValidationErrorUnion
 }
 
-union ValidationErrorDetailUnion {
-    missingValueValidationErrorDetail: MissingValueValidationErrorDetail
-    invalidFormatValidationErrorDetail: InvalidFormatValidationErrorDetail
+union ValidationErrorUnion {
+    missingValueValidationError: MissingValueValidationError
+    invalidFormatValidationError: InvalidFormatValidationError
 }
 
 @error("client")
 @httpError(400)
-structure ValidationProblemDetail with [ValidationProblemDetailMixin] {
+structure ValidationApiErrorExceptionImpl with [ValidationApiErrorException] {
     @memberExample([
         {
-            missingValueValidationDetail: { code: "missing_value", detail: "Name is required", ref: "name" }
+            missingValueValidationError: { code: "missing_value", detail: "Name is required", ref: "name" }
         }
         {
-            invalidFormatValidationDetail: {
+            invalidFormatValidationError: {
                 code: "invalid_format"
                 detail: "Email must be a valid email address"
                 ref: "email"
@@ -74,5 +74,5 @@ structure ValidationProblemDetail with [ValidationProblemDetailMixin] {
         }
     ])
     @required
-    errors: ValidationErrorDetailUnionList
+    errors: ValidationErrorList
 }

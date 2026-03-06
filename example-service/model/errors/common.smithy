@@ -2,9 +2,9 @@ $version: "2"
 
 namespace com.example
 
-// --------- Problem Detail (base class) ---------
+// --------- Base API Error Exception ---------
 @mixin
-structure ProblemDetailMixin {
+structure ApiErrorException {
     @required
     type: String
 
