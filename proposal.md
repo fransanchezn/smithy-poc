@@ -148,9 +148,9 @@ classDiagram
 
 
 ```
-// --------- Problem Detail (base class) ---------
+// --------- Base API Error Exception ---------
 @mixin
-structure ProblemDetailMixin {
+structure ApiErrorException {
     @required
     type: String
 
@@ -181,7 +181,7 @@ structure domainError {}
 
 @mixin
 @domainError
-structure DomainProblemDetailMixin with [ProblemDetailMixin] {
+structure DomainApiErrorException with [ApiErrorException] {
     @const("/errors/types/domain")
     @required
     type: String
@@ -194,7 +194,7 @@ structure DomainProblemDetailMixin with [ProblemDetailMixin] {
 Specific example:
 ```
 // ------------ TransferLimitExceeded Domain Error ------------
-structure TransferLimitAttributes {
+structure TransferLimitExceededAttributes {
     @memberExample(15000.00)
     @required
     amount: BigDecimal
@@ -206,7 +206,7 @@ structure TransferLimitAttributes {
 
 @error("client")
 @httpError(422)
-structure TransferLimitExceededDomainProblemDetail with [DomainProblemDetailMixin] {
+structure TransferLimitExceededDomainApiErrorException with [DomainApiErrorException] {
     @const("Transfer Limit Exceeded")
     @required
     title: String
@@ -220,7 +220,7 @@ structure TransferLimitExceededDomainProblemDetail with [DomainProblemDetailMixi
     code: String
 
     @required
-    attributes: TransferLimitAttributes
+    attributes: TransferLimitExceededAttributes
 }
 ```
 
@@ -234,7 +234,7 @@ structure validationError {}
 
 @mixin
 @validationError
-structure ValidationProblemDetailMixin with [ProblemDetailMixin] {
+structure ValidationApiErrorException with [ApiErrorException] {
     @const("/errors/types/validation")
     @required
     type: String
@@ -254,11 +254,11 @@ structure ValidationProblemDetailMixin with [ProblemDetailMixin] {
     instance: String
 
     @required
-    errors: ValidationErrorDetailUnionList
+    errors: ValidationErrorList
 }
 
 @mixin
-structure ValidationErrorDetailMixin {
+structure ValidationError {
     @required
     @memberExample("Validation error detail")
     detail: String
@@ -272,28 +272,28 @@ structure ValidationErrorDetailMixin {
     ref: String
 }
 
-list ValidationErrorDetailUnionList {
-    member: ValidationErrorDetailUnion
+list ValidationErrorList {
+    member: ValidationErrorUnion
 }
 
-union ValidationErrorDetailUnion {
-    missingValueValidationErrorDetail: MissingValueValidationErrorDetail
-    invalidFormatValidationErrorDetail: InvalidFormatValidationErrorDetail
+union ValidationErrorUnion {
+    missingValueValidationError: MissingValueValidationError
+    invalidFormatValidationError: InvalidFormatValidationError
 }
 
-structure MissingValueValidationErrorDetail with [ValidationErrorDetailMixin] {}
+structure MissingValueValidationError with [ValidationError] {}
 
-structure InvalidFormatValidationErrorDetail with [ValidationErrorDetailMixin] {}
+structure InvalidFormatValidationError with [ValidationError] {}
 
 @error("client")
 @httpError(400)
-structure ValidationProblemDetail with [ValidationProblemDetailMixin] {
+structure ValidationApiErrorExceptionImpl with [ValidationApiErrorException] {
     @memberExample([
         {
-            missingValueValidationErrorDetail: { code: "missing_value", detail: "Name is required", ref: "name" }
+            missingValueValidationError: { code: "missing_value", detail: "Name is required", ref: "name" }
         },
         {
-            invalidFormatValidationDetail: {
+            invalidFormatValidationError: {
                 code: "invalid_format",
                 detail: "Email must be a valid email address",
                 ref: "email",
@@ -302,7 +302,7 @@ structure ValidationProblemDetail with [ValidationProblemDetailMixin] {
         }
     ])
     @required
-    errors: ValidationErrorDetailUnionList
+    errors: ValidationErrorList
 }
 ```
 
@@ -341,7 +341,7 @@ structure InvalidFormatAttributes {
     pattern: String
 }
 
-structure InvalidFormatValidationErrorDetail with [ValidationErrorDetailMixin] {
+structure InvalidFormatValidationError with [ValidationError] {
     @const("invalid_format")
     @required
     code: String
