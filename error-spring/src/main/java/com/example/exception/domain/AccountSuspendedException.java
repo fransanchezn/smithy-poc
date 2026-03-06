@@ -1,11 +1,25 @@
 package com.example.exception.domain;
 
+import com.example.exception.ApiErrorResponseException;
+import java.net.URI;
+import java.util.Objects;
+import java.util.Optional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+
 /**
  * Exception thrown when an account is suspended.
  */
-public final class AccountSuspendedException extends PublicDomainErrorResponseException {
+public final class AccountSuspendedException extends ApiErrorResponseException {
 
-  private AccountSuspendedException(AccountSuspendedProblemDetail problemDetail, Throwable cause) {
+  private static final URI TYPE = URI.create("/errors/types/domain");
+  private static final AccountErrorCode CODE = AccountErrorCode.ACCOUNT_SUSPENDED;
+  private static final String TITLE = "Account Suspended";
+  private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
+  private static final String CODE_PROPERTY = "code";
+  private static final String ATTRIBUTES_PROPERTY = "attributes";
+
+  private AccountSuspendedException(ProblemDetail problemDetail, Throwable cause) {
     super(problemDetail, cause);
   }
 
@@ -13,25 +27,50 @@ public final class AccountSuspendedException extends PublicDomainErrorResponseEx
     return new Builder();
   }
 
-  @Override
-  public AccountSuspendedProblemDetail getProblemDetail() {
-    return (AccountSuspendedProblemDetail) super.getProblemDetail();
+  public String getCode() {
+    return CODE.getCode();
   }
 
-  @Override
   public AccountSuspendedAttributes getAttributes() {
-    return getProblemDetail().getAttributes();
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (AccountSuspendedAttributes) props.get(ATTRIBUTES_PROPERTY))
+        .orElse(null);
   }
 
-  public static final class Builder
-      extends PublicDomainErrorResponseException.Builder<AccountSuspendedProblemDetail, AccountSuspendedException> {
+  private static ProblemDetail buildProblemDetail(String detail,
+      AccountSuspendedAttributes attributes) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
+    problemDetail.setType(TYPE);
+    problemDetail.setTitle(TITLE);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    problemDetail.setProperty(CODE_PROPERTY, CODE.getCode());
+    problemDetail.setProperty(ATTRIBUTES_PROPERTY, attributes);
+    return problemDetail;
+  }
+
+  public static final class Builder {
+
+    private String detail;
+    private AccountSuspendedAttributes attributes;
 
     private Builder() {
     }
 
-    @Override
+    public Builder detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public Builder attributes(AccountSuspendedAttributes attributes) {
+      this.attributes = attributes;
+      return this;
+    }
+
     public AccountSuspendedException build() {
-      return new AccountSuspendedException(problemDetail, cause);
+      Objects.requireNonNull(attributes, "attributes is required");
+      return new AccountSuspendedException(buildProblemDetail(detail, attributes), null);
     }
   }
 }
