@@ -373,20 +373,51 @@ Now the juicy bits, the specific SpringBoot implementation for these errors! We 
 3. **Type Safety**: Domain exceptions use typed attributes records
 4. **Immutability**: Exceptions are immutable, built via builders
 5. **RFC 7807 Compliant**: All responses follow the Problem Details specification
+6. **Error Type Header**: Every exception includes an `x-error-type` header with the class name for easy identification
 
 ### Base Classes
 
-An abstract class (ApiErrorResponseException) will help us identify our errors vs spring errors (ErrorResponseException):
+An abstract class (ApiErrorResponseException) will help us identify our errors vs spring errors (ErrorResponseException). It also provides the `x-error-type` response header containing the exception class name:
 ```java
 public abstract class ApiErrorResponseException extends ErrorResponseException {
 
-  protected ApiErrorResponseException(ProblemDetail problemDetail) {
+  public static final String ERROR_TYPE_HEADER = "x-error-type";
+
+  protected ApiErrorResponseException(ProblemDetail problemDetail, String errorType) {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, null);
+    getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
 
-  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
+  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause,
+      String errorType) {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
+    getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
+}
+```
+
+Each concrete exception defines its error type as a hardcoded constant and passes it to the constructor:
+```java
+public final class TransferLimitExceededException extends ApiErrorResponseException {
+  private static final String ERROR_TYPE = "TransferLimitExceededException";
+  // ...
+
+  private TransferLimitExceededException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
+  }
+}
+```
+
+This header allows clients to programmatically identify the specific error type without parsing the response body:
+```
+HTTP/1.1 422 Unprocessable Content
+Content-Type: application/problem+json
+x-error-type: TransferLimitExceededException
+
+{
+  "type": "/errors/types/domain",
+  "title": "Transfer Limit Exceeded",
+  ...
 }
 ```
 

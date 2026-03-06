@@ -10,11 +10,12 @@ import org.springframework.http.ProblemDetail;
  */
 public final class ServerErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "ServerErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/server");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  private ServerErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private ServerErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -50,7 +51,7 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
     }
 
     public ServerErrorResponseException build() {
-      return new ServerErrorResponseException(buildProblemDetail(title, detail), null);
+      return new ServerErrorResponseException(buildProblemDetail(title, detail));
     }
   }
 }

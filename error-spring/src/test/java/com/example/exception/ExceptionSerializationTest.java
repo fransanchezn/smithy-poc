@@ -60,6 +60,17 @@ class ExceptionSerializationTest {
 
       assertThat(exception.getStatusCode().value()).isEqualTo(401);
     }
+
+    @Test
+    void shouldHaveErrorTypeHeader() {
+      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+          .title("Unauthorized")
+          .detail("test")
+          .build();
+
+      assertThat(exception.getHeaders().getFirst("x-error-type"))
+          .isEqualTo("AccessErrorResponseException");
+    }
   }
 
   @Nested
@@ -89,6 +100,17 @@ class ExceptionSerializationTest {
           .build();
 
       assertThat(exception.getStatusCode().value()).isEqualTo(500);
+    }
+
+    @Test
+    void shouldHaveErrorTypeHeader() {
+      ServerErrorResponseException exception = ServerErrorResponseException.builder()
+          .title("Internal Server Error")
+          .detail("test")
+          .build();
+
+      assertThat(exception.getHeaders().getFirst("x-error-type"))
+          .isEqualTo("ServerErrorResponseException");
     }
   }
 
@@ -147,6 +169,20 @@ class ExceptionSerializationTest {
       assertThat(exception.getCode()).isEqualTo("transfer.transfer_limit_exceeded");
       assertThat(exception.getAttributes().amount()).isEqualByComparingTo("1000");
       assertThat(exception.getAttributes().currency()).isEqualTo("USD");
+    }
+
+    @Test
+    void shouldHaveErrorTypeHeader() {
+      TransferLimitExceededException exception = TransferLimitExceededException.builder()
+          .detail("Test")
+          .attributes(TransferLimitExceededAttributes.builder()
+              .amount(new BigDecimal("1000"))
+              .currency("USD")
+              .build())
+          .build();
+
+      assertThat(exception.getHeaders().getFirst("x-error-type"))
+          .isEqualTo("TransferLimitExceededException");
     }
   }
 
@@ -254,6 +290,22 @@ class ExceptionSerializationTest {
       assertThat(exception.getErrors().get(0).getCode()).isEqualTo("invalid_format");
       assertThat(exception.getErrors().get(0).getDetail()).isEqualTo("Invalid email");
       assertThat(exception.getErrors().get(0).getRef()).isEqualTo("email");
+    }
+
+    @Test
+    void shouldHaveErrorTypeHeader() {
+      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+          .error(InvalidFormatValidationError.builder()
+              .detail("Invalid email")
+              .ref("email")
+              .attributes(InvalidFormatAttributes.builder()
+                  .pattern("^[a-z]+@[a-z]+$")
+                  .build())
+              .build())
+          .build();
+
+      assertThat(exception.getHeaders().getFirst("x-error-type"))
+          .isEqualTo("ValidationErrorResponseException");
     }
   }
 

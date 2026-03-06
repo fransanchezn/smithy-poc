@@ -15,13 +15,14 @@ import org.springframework.http.ProblemDetail;
  */
 public final class ValidationErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "ValidationErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/validation");
   private static final String TITLE = "Validation Problem";
   private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
   private static final String ERRORS_PROPERTY = "errors";
 
-  private ValidationErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private ValidationErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -61,7 +62,7 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     }
 
     public ValidationErrorResponseException build() {
-      return new ValidationErrorResponseException(buildProblemDetail(errors), null);
+      return new ValidationErrorResponseException(buildProblemDetail(errors));
     }
   }
 }

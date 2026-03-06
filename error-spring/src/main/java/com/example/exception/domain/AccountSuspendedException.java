@@ -12,6 +12,7 @@ import org.springframework.http.ProblemDetail;
  */
 public final class AccountSuspendedException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "AccountSuspendedException";
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final AccountErrorCode CODE = AccountErrorCode.ACCOUNT_SUSPENDED;
   private static final String TITLE = "Account Suspended";
@@ -19,8 +20,8 @@ public final class AccountSuspendedException extends ApiErrorResponseException {
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
 
-  private AccountSuspendedException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private AccountSuspendedException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -70,7 +71,7 @@ public final class AccountSuspendedException extends ApiErrorResponseException {
 
     public AccountSuspendedException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new AccountSuspendedException(buildProblemDetail(detail, attributes), null);
+      return new AccountSuspendedException(buildProblemDetail(detail, attributes));
     }
   }
 }

@@ -10,11 +10,12 @@ import org.springframework.http.ProblemDetail;
  */
 public final class AccessErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "AccessErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/access");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
 
-  private AccessErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private AccessErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -50,7 +51,7 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
     }
 
     public AccessErrorResponseException build() {
-      return new AccessErrorResponseException(buildProblemDetail(title, detail), null);
+      return new AccessErrorResponseException(buildProblemDetail(title, detail));
     }
   }
 }

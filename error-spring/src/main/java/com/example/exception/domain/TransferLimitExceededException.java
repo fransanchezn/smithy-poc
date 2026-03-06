@@ -12,6 +12,7 @@ import org.springframework.http.ProblemDetail;
  */
 public final class TransferLimitExceededException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "TransferLimitExceededException";
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
@@ -19,8 +20,8 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
 
-  private TransferLimitExceededException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private TransferLimitExceededException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -70,7 +71,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
 
     public TransferLimitExceededException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new TransferLimitExceededException(buildProblemDetail(detail, attributes), null);
+      return new TransferLimitExceededException(buildProblemDetail(detail, attributes));
     }
   }
 }

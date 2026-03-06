@@ -10,11 +10,16 @@ import org.springframework.web.ErrorResponseException;
  */
 public abstract class ApiErrorResponseException extends ErrorResponseException {
 
-  protected ApiErrorResponseException(ProblemDetail problemDetail) {
+  public static final String ERROR_TYPE_HEADER = "x-error-type";
+
+  protected ApiErrorResponseException(ProblemDetail problemDetail, String errorType) {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, null);
+    getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
 
-  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
+  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause,
+      String errorType) {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
+    getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
 }
