@@ -81,67 +81,54 @@ This trait help us generate better openAPI specs where we can provide example fo
 instance: String
 ```
 ### Error structure
-The error structure is organized in two layers with internal/public visibility:
+The error structure follows a flat hierarchy with a single level of inheritance from `ApiErrorResponseException`:
+
 ```mermaid
 classDiagram
+    class ErrorResponseException {
+        <<Spring Framework>>
+    }
+
     class ApiErrorResponseException {
         <<abstract>>
     }
 
-    class AccessErrorResponseException {
-        <<sealed>>
-    }
-    class ServerErrorResponseException {
-        <<sealed>>
-    }
-    class DomainErrorResponseException {
-        <<sealed>>
-    }
-    class ValidationErrorResponseException {
-        <<sealed>>
+    class TransferLimitExceededException {
+        <<final>>
+        +getCode(): String
+        +getAttributes(): TransferLimitExceededAttributes
     }
 
+    class AccountSuspendedException {
+        <<final>>
+        +getCode(): String
+        +getAttributes(): AccountSuspendedAttributes
+    }
+
+    class ValidationErrorResponseException {
+        <<final>>
+        +getErrors(): List~ValidationError~
+    }
+
+    class AccessErrorResponseException {
+        <<final>>
+    }
+
+    class ServerErrorResponseException {
+        <<final>>
+    }
+
+    ErrorResponseException <|-- ApiErrorResponseException
+    ApiErrorResponseException <|-- TransferLimitExceededException
+    ApiErrorResponseException <|-- AccountSuspendedException
+    ApiErrorResponseException <|-- ValidationErrorResponseException
     ApiErrorResponseException <|-- AccessErrorResponseException
     ApiErrorResponseException <|-- ServerErrorResponseException
-    ApiErrorResponseException <|-- DomainErrorResponseException
-    ApiErrorResponseException <|-- ValidationErrorResponseException
 
-    AccessErrorResponseException <|-- PublicAccessErrorResponseException
-    AccessErrorResponseException <|-- InternalAccessErrorResponseException
+    TransferLimitExceededException *-- TransferLimitExceededAttributes
+    AccountSuspendedException *-- AccountSuspendedAttributes
 
-    ServerErrorResponseException <|-- PublicServerErrorResponseException
-    ServerErrorResponseException <|-- InternalServerErrorResponseException
-
-    DomainErrorResponseException <|-- PublicDomainErrorResponseException
-    DomainErrorResponseException <|-- InternalDomainErrorResponseException
-
-    ValidationErrorResponseException <|-- PublicValidationErrorResponseException
-    ValidationErrorResponseException <|-- InternalValidationErrorResponseException
-
-    PublicDomainErrorResponseException <|-- TransferLimitExceededException
-    PublicDomainErrorResponseException <|-- AccountSuspendedException
-
-    class ProblemDetail {
-        <<Spring>>
-        +type: URI
-        +title: String
-        +status: Integer
-        +detail: String
-        +instance: String
-    }
-
-    ProblemDetail <|-- AccessProblemDetail
-    ProblemDetail <|-- ServerProblemDetail
-    ProblemDetail <|-- DomainProblemDetail
-    ProblemDetail <|-- ValidationProblemDetail
-
-    DomainProblemDetail <|-- TransferLimitExceededProblemDetail
-    DomainProblemDetail <|-- AccountSuspendedProblemDetail
-
-    TransferLimitExceededProblemDetail *-- TransferLimitExceededAttributes
-    AccountSuspendedProblemDetail *-- AccountSuspendedAttributes
-
-    ValidationProblemDetail *-- "0..*" ValidationError
+    ValidationErrorResponseException *-- "0..*" ValidationError
 
     ValidationError <|-- InvalidFormatValidationError
     ValidationError <|-- MissingValueValidationError
@@ -332,11 +319,11 @@ Json example for Validation Error:
             code: "invalid_format"
             detail: "Email must be a valid email address"
             ref: "email"
-            attributes: { 
-                pattern: "^[a-zA-Z0-9]+$" 
+            attributes: {
+                pattern: "^[a-zA-Z0-9]+$"
             }
         },
-        { 
+        {
             code: "missing_value",
             detail: "Name is required",
             ref: "name"
@@ -377,7 +364,17 @@ structure InvalidFormatValidationErrorDetail with [ValidationErrorDetailMixin] {
     - Adding an example that doesn't match the schema
 
 ## Codegen: Java Spring-boot implementation
-Now the juicy bits, the specific SpringBoot implementation for these errors! We are following a very similar approach to what smithy defines.
+Now the juicy bits, the specific SpringBoot implementation for these errors! We follow a simplified flat hierarchy where each exception extends directly from `ApiErrorResponseException` and builds its own `ProblemDetail`.
+
+### Design Principles
+
+1. **Flat Hierarchy**: Only 2 levels of inheritance (Spring's `ErrorResponseException` -> `ApiErrorResponseException` -> concrete exceptions)
+2. **Self-Contained**: Each exception builds its own `ProblemDetail` internally
+3. **Type Safety**: Domain exceptions use typed attributes records
+4. **Immutability**: Exceptions are immutable, built via builders
+5. **RFC 7807 Compliant**: All responses follow the Problem Details specification
+
+### Base Classes
 
 An abstract class (ApiErrorResponseException) will help us identify our errors vs spring errors (ErrorResponseException):
 ```java
@@ -389,27 +386,6 @@ public abstract class ApiErrorResponseException extends ErrorResponseException {
 
   protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
-  }
-
-  public abstract static class Builder<P extends ProblemDetail, T extends ApiErrorResponseException> {
-
-    protected P problemDetail;
-    protected Throwable cause;
-
-    protected Builder() {
-    }
-
-    public Builder<P, T> problemDetail(P problemDetail) {
-      this.problemDetail = problemDetail;
-      return this;
-    }
-
-    public Builder<P, T> cause(Throwable cause) {
-      this.cause = cause;
-      return this;
-    }
-
-    public abstract T build();
   }
 }
 ```
@@ -430,200 +406,7 @@ public interface ErrorCode {
 ```
 
 ### Domain Errors
-For the domain errors, we are implementing a sealed abstract class (DomainErrorResponseException) which permits public and internal domain error categories. Public errors are exposed to API consumers, while internal errors are for internal use only.
-
-```java
-public abstract sealed class DomainErrorResponseException extends ApiErrorResponseException
-    permits PublicDomainErrorResponseException, InternalDomainErrorResponseException {
-
-  protected DomainErrorResponseException(DomainProblemDetail problemDetail) {
-    super(problemDetail);
-  }
-
-  protected DomainErrorResponseException(DomainProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public DomainProblemDetail getProblemDetail() {
-    return (DomainProblemDetail) getBody();
-  }
-
-  public String getCode() {
-    return getProblemDetail().getCode();
-  }
-
-  public ErrorAttributes getAttributes() {
-    return getProblemDetail().getAttributes();
-  }
-
-  public abstract static class Builder<P extends DomainProblemDetail, T extends DomainErrorResponseException>
-      extends ApiErrorResponseException.Builder<P, T> {
-
-    protected Builder() {
-    }
-  }
-}
-```
-
-The public domain exception is sealed to only permit specific public domain exception implementations:
-```java
-public abstract sealed class PublicDomainErrorResponseException extends DomainErrorResponseException
-    permits TransferLimitExceededException, AccountSuspendedException {
-
-  protected PublicDomainErrorResponseException(DomainProblemDetail problemDetail) {
-    super(problemDetail);
-  }
-
-  protected PublicDomainErrorResponseException(DomainProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public abstract static class Builder<P extends DomainProblemDetail, T extends PublicDomainErrorResponseException>
-      extends DomainErrorResponseException.Builder<P, T> {
-
-    protected Builder() {
-    }
-  }
-}
-```
-
-The internal domain exception is non-sealed for flexibility in internal error handling:
-```java
-public non-sealed class InternalDomainErrorResponseException extends DomainErrorResponseException {
-
-  private InternalDomainErrorResponseException(DomainProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends DomainErrorResponseException.Builder<DomainProblemDetail, InternalDomainErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public InternalDomainErrorResponseException build() {
-      return new InternalDomainErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-Then we have the specific public exceptions such as TransferLimitExceededException, AccountSuspendedException:
-```java
-public final class TransferLimitExceededException extends PublicDomainErrorResponseException {
-
-  private TransferLimitExceededException(TransferLimitExceededProblemDetail problemDetail,
-      Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  @Override
-  public TransferLimitExceededProblemDetail getProblemDetail() {
-    return (TransferLimitExceededProblemDetail) super.getProblemDetail();
-  }
-
-  @Override
-  public TransferLimitExceededAttributes getAttributes() {
-    return getProblemDetail().getAttributes();
-  }
-
-  public static final class Builder
-      extends PublicDomainErrorResponseException.Builder<TransferLimitExceededProblemDetail, TransferLimitExceededException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public TransferLimitExceededException build() {
-      return new TransferLimitExceededException(problemDetail, cause);
-    }
-  }
-}
-```
-
-This defines our exception structure to allow us to "catch" specific exceptions or be more generic such as domain level exceptions. However, we still need to define the payload (ProblemDetail). For this, we are extending the Spring ProblemDetail class in this case for our DomainProblemDetail:
-```java
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "code")
-@JsonSubTypes({
-    @JsonSubTypes.Type(value = TransferLimitExceededProblemDetail.class, name = "transfer.transfer_limit_exceeded"),
-    @JsonSubTypes.Type(value = AccountSuspendedProblemDetail.class, name = "account.account_suspended")
-})
-public abstract sealed class DomainProblemDetail extends ProblemDetail
-    permits TransferLimitExceededProblemDetail, AccountSuspendedProblemDetail {
-
-  protected static final String ATTRIBUTES_PROPERTY = "attributes";
-  private static final URI TYPE = URI.create("/errors/types/domain");
-  private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
-  private static final String CODE_PROPERTY = "code";
-
-  protected DomainProblemDetail(String code, String title, String detail,
-      ErrorAttributes attributes) {
-    this(DEFAULT_STATUS, code, title, detail, attributes);
-  }
-
-  protected DomainProblemDetail(HttpStatus status, String code, String title, String detail,
-      ErrorAttributes attributes) {
-    super(status.value());
-    setType(TYPE);
-    setTitle(title);
-    if (detail != null) {
-      setDetail(detail);
-    }
-    setProperty(CODE_PROPERTY, code);
-    setProperty(ATTRIBUTES_PROPERTY, attributes);
-  }
-
-  public String getCode() {
-    return (String) Optional.ofNullable(getProperties())
-        .map(it -> it.get(CODE_PROPERTY))
-        .orElse(null);
-  }
-
-  public ErrorAttributes getAttributes() {
-    return (ErrorAttributes) Optional.ofNullable(getProperties())
-        .map(it -> it.get(ATTRIBUTES_PROPERTY))
-        .orElse(null);
-  }
-
-  public abstract static class Builder<A extends ErrorAttributes, T extends DomainProblemDetail> {
-
-    protected HttpStatus status = DEFAULT_STATUS;
-    protected String detail;
-    protected A attributes;
-
-    protected Builder() {
-    }
-
-    public Builder<A, T> status(HttpStatus status) {
-      this.status = status;
-      return this;
-    }
-
-    public Builder<A, T> detail(String detail) {
-      this.detail = detail;
-      return this;
-    }
-
-    public Builder<A, T> attributes(A attributes) {
-      this.attributes = attributes;
-      return this;
-    }
-
-    public abstract T build();
-  }
-}
-```
-
-This problem detail defines the Type and the basic structure for domain responses. Then we have the specific implementations that will define the code, title and attributes for the specific problem.
+Domain exceptions extend `ApiErrorResponseException` directly and build their own `ProblemDetail`. Each exception has a fixed type, title, status, and code, with configurable detail and type-safe attributes.
 
 We use enums for domain error codes that follow a domain.error_code pattern:
 ```java
@@ -672,45 +455,69 @@ public enum TransferErrorCode implements DomainErrorCode {
 }
 ```
 
-The specific problem detail implementation:
+The specific domain exception implementation:
 ```java
-public final class TransferLimitExceededProblemDetail extends DomainProblemDetail {
+public final class TransferLimitExceededException extends ApiErrorResponseException {
 
+  private static final URI TYPE = URI.create("/errors/types/domain");
   private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
+  private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
+  private static final String CODE_PROPERTY = "code";
+  private static final String ATTRIBUTES_PROPERTY = "attributes";
 
-  TransferLimitExceededProblemDetail() {
-    super(CODE.getCode(), TITLE, null, null);
-  }
-
-  private TransferLimitExceededProblemDetail(HttpStatus status, String detail,
-      TransferLimitExceededAttributes attributes) {
-    super(status, CODE.getCode(), TITLE, detail, attributes);
+  private TransferLimitExceededException(ProblemDetail problemDetail, Throwable cause) {
+    super(problemDetail, cause);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  @Override
+  public String getCode() {
+    return CODE.getCode();
+  }
+
   public TransferLimitExceededAttributes getAttributes() {
-    return (TransferLimitExceededAttributes) super.getAttributes();
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (TransferLimitExceededAttributes) props.get(ATTRIBUTES_PROPERTY))
+        .orElse(null);
   }
 
-  @JsonSetter(ATTRIBUTES_PROPERTY)
-  private void setAttributes(TransferLimitExceededAttributes attributes) {
-    setProperty(ATTRIBUTES_PROPERTY, attributes);
+  private static ProblemDetail buildProblemDetail(String detail,
+      TransferLimitExceededAttributes attributes) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
+    problemDetail.setType(TYPE);
+    problemDetail.setTitle(TITLE);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    problemDetail.setProperty(CODE_PROPERTY, CODE.getCode());
+    problemDetail.setProperty(ATTRIBUTES_PROPERTY, attributes);
+    return problemDetail;
   }
 
-  public static final class Builder
-      extends DomainProblemDetail.Builder<TransferLimitExceededAttributes, TransferLimitExceededProblemDetail> {
+  public static final class Builder {
+
+    private String detail;
+    private TransferLimitExceededAttributes attributes;
 
     private Builder() {
     }
 
-    @Override
-    public TransferLimitExceededProblemDetail build() {
-      return new TransferLimitExceededProblemDetail(status, detail, attributes);
+    public Builder detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public Builder attributes(TransferLimitExceededAttributes attributes) {
+      this.attributes = attributes;
+      return this;
+    }
+
+    public TransferLimitExceededException build() {
+      Objects.requireNonNull(attributes, "attributes is required");
+      return new TransferLimitExceededException(buildProblemDetail(detail, attributes), null);
     }
   }
 }
@@ -750,119 +557,43 @@ public record TransferLimitExceededAttributes(BigDecimal amount, String currency
 }
 ```
 
+Usage example:
+```java
+throw TransferLimitExceededException.builder()
+    .detail("Your transfer exceeds the daily limit")
+    .attributes(TransferLimitExceededAttributes.builder()
+        .amount(new BigDecimal("15000.00"))
+        .currency("USD")
+        .build())
+    .build();
+
+// JSON Response:
+// {
+//   "type": "/errors/types/domain",
+//   "title": "Transfer Limit Exceeded",
+//   "status": 422,
+//   "detail": "Your transfer exceeds the daily limit",
+//   "code": "transfer.transfer_limit_exceeded",
+//   "attributes": {
+//     "amount": 15000.00,
+//     "currency": "USD"
+//   }
+// }
+```
+
 ### Validation Errors
-For validation errors, it is slightly different since we have a list of error detail rather than specific exceptions for each type. Like domain errors, validation errors are split into public and internal categories.
+Validation errors contain a list of error details rather than specific exceptions for each type:
 
-ValidationErrorResponseException is the sealed base class:
 ```java
-public abstract sealed class ValidationErrorResponseException extends ApiErrorResponseException
-    permits PublicValidationErrorResponseException, InternalValidationErrorResponseException {
-
-  protected ValidationErrorResponseException(ValidationProblemDetail problemDetail) {
-    super(problemDetail);
-  }
-
-  protected ValidationErrorResponseException(ValidationProblemDetail problemDetail,
-      Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public ValidationProblemDetail getProblemDetail() {
-    return (ValidationProblemDetail) getBody();
-  }
-
-  public List<ValidationError> getErrors() {
-    return getProblemDetail().getErrors();
-  }
-
-  public abstract static class Builder<T extends ValidationErrorResponseException>
-      extends ApiErrorResponseException.Builder<ValidationProblemDetail, T> {
-
-    protected Builder() {
-    }
-  }
-}
-```
-
-The public validation exception for API-exposed errors:
-```java
-public non-sealed class PublicValidationErrorResponseException
-    extends ValidationErrorResponseException {
-
-  private PublicValidationErrorResponseException(ValidationProblemDetail problemDetail,
-      Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends ValidationErrorResponseException.Builder<PublicValidationErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public PublicValidationErrorResponseException build() {
-      return new PublicValidationErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-The internal validation exception for internal use:
-```java
-public non-sealed class InternalValidationErrorResponseException
-    extends ValidationErrorResponseException {
-
-  private InternalValidationErrorResponseException(ValidationProblemDetail problemDetail,
-      Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends ValidationErrorResponseException.Builder<InternalValidationErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public InternalValidationErrorResponseException build() {
-      return new InternalValidationErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-This structure allows distinguishing between validation errors meant for API consumers vs internal validation handling.
-
-Then as before, with domain, in this case we have the ValidationProblemDetail as the payload definition for these exceptions:
-```java
-public final class ValidationProblemDetail extends ProblemDetail {
+public final class ValidationErrorResponseException extends ApiErrorResponseException {
 
   private static final URI TYPE = URI.create("/errors/types/validation");
   private static final String TITLE = "Validation Problem";
   private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
   private static final String ERRORS_PROPERTY = "errors";
 
-  ValidationProblemDetail() {
-    super(STATUS.value());
-    setType(TYPE);
-    setTitle(TITLE);
-    setProperty(ERRORS_PROPERTY, new ArrayList<ValidationError>());
-  }
-
-  private ValidationProblemDetail(List<ValidationError> errors) {
-    super(STATUS.value());
-    setType(TYPE);
-    setTitle(TITLE);
-    setProperty(ERRORS_PROPERTY, new ArrayList<>(errors));
+  private ValidationErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
+    super(problemDetail, cause);
   }
 
   public static Builder builder() {
@@ -871,15 +602,17 @@ public final class ValidationProblemDetail extends ProblemDetail {
 
   @SuppressWarnings("unchecked")
   public List<ValidationError> getErrors() {
-    return (List<ValidationError>) Optional.ofNullable(getProperties())
-        .map(it -> it.get(ERRORS_PROPERTY))
-        .orElseGet(ArrayList::new);
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (List<ValidationError>) props.get(ERRORS_PROPERTY))
+        .orElse(Collections.emptyList());
   }
 
-  @JsonSetter(ERRORS_PROPERTY)
-  private void setErrors(List<ValidationError> errors) {
-    getErrors().clear();
-    getErrors().addAll(errors);
+  private static ProblemDetail buildProblemDetail(List<ValidationError> errors) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(STATUS);
+    problemDetail.setType(TYPE);
+    problemDetail.setTitle(TITLE);
+    problemDetail.setProperty(ERRORS_PROPERTY, new ArrayList<>(errors));
+    return problemDetail;
   }
 
   public static final class Builder {
@@ -899,14 +632,14 @@ public final class ValidationProblemDetail extends ProblemDetail {
       return this;
     }
 
-    public ValidationProblemDetail build() {
-      return new ValidationProblemDetail(errors);
+    public ValidationErrorResponseException build() {
+      return new ValidationErrorResponseException(buildProblemDetail(errors), null);
     }
   }
 }
 ```
 
-The ValidationError class is going to allow us to work with multiple types of validation errors (abstraction)
+The ValidationError class allows working with multiple types of validation errors:
 ```java
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "code")
 @JsonSubTypes({
@@ -998,7 +731,7 @@ public enum ValidationErrorCode implements ErrorCode {
 }
 ```
 
-And finally we have the specific implementation for the errors and their error attributes
+And the specific implementation for the errors and their error attributes:
 ```java
 public final class InvalidFormatValidationError extends ValidationError {
 
@@ -1062,185 +795,80 @@ public record InvalidFormatAttributes(String pattern) implements ErrorAttributes
 }
 ```
 
-Similarly for missing value validation errors:
+Usage example:
 ```java
-public final class MissingValueValidationError extends ValidationError {
+throw ValidationErrorResponseException.builder()
+    .error(InvalidFormatValidationError.builder()
+        .detail("Email format is invalid")
+        .ref("user.email")
+        .attributes(InvalidFormatAttributes.builder()
+            .pattern("^[\\w.-]+@[\\w.-]+\\.\\w+$")
+            .build())
+        .build())
+    .error(MissingValueValidationError.builder()
+        .detail("First name is required")
+        .ref("user.firstName")
+        .attributes(MissingValueAttributes.builder()
+            .missingField("firstName")
+            .build())
+        .build())
+    .build();
 
-  private static final ValidationErrorCode CODE = ValidationErrorCode.MISSING_VALUE;
-
-  @JsonCreator
-  private MissingValueValidationError(
-      @JsonProperty("detail") String detail,
-      @JsonProperty("ref") String ref,
-      @JsonProperty("attributes") MissingValueAttributes attributes) {
-    super(CODE.getCode(), detail, ref, attributes);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  @Override
-  public MissingValueAttributes getAttributes() {
-    return (MissingValueAttributes) super.getAttributes();
-  }
-
-  public static final class Builder
-      extends ValidationError.Builder<MissingValueAttributes, MissingValueValidationError> {
-
-    private Builder() {
-    }
-
-    @Override
-    public MissingValueValidationError build() {
-      return new MissingValueValidationError(detail, ref, attributes);
-    }
-  }
-}
-```
-
-```java
-public record MissingValueAttributes(String missingField) implements ErrorAttributes {
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder {
-
-    private String missingField;
-
-    private Builder() {
-    }
-
-    public Builder missingField(String missingField) {
-      this.missingField = missingField;
-      return this;
-    }
-
-    public MissingValueAttributes build() {
-      return new MissingValueAttributes(missingField);
-    }
-  }
-}
+// JSON Response:
+// {
+//   "type": "/errors/types/validation",
+//   "title": "Validation Problem",
+//   "status": 400,
+//   "errors": [
+//     {
+//       "code": "invalid_format",
+//       "detail": "Email format is invalid",
+//       "ref": "user.email",
+//       "attributes": { "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$" }
+//     },
+//     {
+//       "code": "missing_value",
+//       "detail": "First name is required",
+//       "ref": "user.firstName",
+//       "attributes": { "missingField": "firstName" }
+//     }
+//   ]
+// }
 ```
 
 ### Access Errors
-Access errors follow the same public/internal pattern as the other error types:
+Access errors handle authentication and authorization failures:
 
-The sealed base class for access errors:
 ```java
-public abstract sealed class AccessErrorResponseException extends ApiErrorResponseException
-    permits PublicAccessErrorResponseException, InternalAccessErrorResponseException {
-
-  protected AccessErrorResponseException(AccessProblemDetail problemDetail) {
-    super(problemDetail);
-  }
-
-  protected AccessErrorResponseException(AccessProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public AccessProblemDetail getProblemDetail() {
-    return (AccessProblemDetail) getBody();
-  }
-
-  public abstract static class Builder<T extends AccessErrorResponseException>
-      extends ApiErrorResponseException.Builder<AccessProblemDetail, T> {
-
-    protected Builder() {
-    }
-  }
-}
-```
-
-The public access exception for API-exposed errors:
-```java
-public non-sealed class PublicAccessErrorResponseException extends AccessErrorResponseException {
-
-  private PublicAccessErrorResponseException(AccessProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends AccessErrorResponseException.Builder<PublicAccessErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public PublicAccessErrorResponseException build() {
-      return new PublicAccessErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-The internal access exception for internal use:
-```java
-public non-sealed class InternalAccessErrorResponseException extends AccessErrorResponseException {
-
-  private InternalAccessErrorResponseException(AccessProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends AccessErrorResponseException.Builder<InternalAccessErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public InternalAccessErrorResponseException build() {
-      return new InternalAccessErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-And the payload is handled with the problem detail:
-```java
-public final class AccessProblemDetail extends ProblemDetail {
+public final class AccessErrorResponseException extends ApiErrorResponseException {
 
   private static final URI TYPE = URI.create("/errors/types/access");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
 
-  AccessProblemDetail() {
-    super();
-  }
-
-  private AccessProblemDetail(HttpStatus status, String title, String detail) {
-    super(status.value());
-    setType(TYPE);
-    setTitle(title);
-    if (detail != null) {
-      setDetail(detail);
-    }
+  private AccessErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
+    super(problemDetail, cause);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
+  private static ProblemDetail buildProblemDetail(String title, String detail) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
+    problemDetail.setType(TYPE);
+    problemDetail.setTitle(title);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    return problemDetail;
+  }
+
   public static final class Builder {
 
-    private HttpStatus status = DEFAULT_STATUS;
     private String title;
     private String detail;
 
     private Builder() {
-    }
-
-    public Builder status(HttpStatus status) {
-      this.status = status;
-      return this;
     }
 
     public Builder title(String title) {
@@ -1253,130 +881,62 @@ public final class AccessProblemDetail extends ProblemDetail {
       return this;
     }
 
-    public AccessProblemDetail build() {
-      return new AccessProblemDetail(status, title, detail);
+    public AccessErrorResponseException build() {
+      return new AccessErrorResponseException(buildProblemDetail(title, detail), null);
     }
   }
 }
 ```
 
-### Service Errors
-Server errors follow the same public/internal pattern:
-
-The sealed base class for server errors:
+Usage example:
 ```java
-public abstract sealed class ServerErrorResponseException extends ApiErrorResponseException
-    permits PublicServerErrorResponseException, InternalServerErrorResponseException {
+throw AccessErrorResponseException.builder()
+    .title("Unauthorized")
+    .detail("Invalid or expired token")
+    .build();
 
-  protected ServerErrorResponseException(ServerProblemDetail problemDetail) {
-    super(problemDetail);
-  }
-
-  protected ServerErrorResponseException(ServerProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public ServerProblemDetail getProblemDetail() {
-    return (ServerProblemDetail) getBody();
-  }
-
-  public abstract static class Builder<T extends ServerErrorResponseException>
-      extends ApiErrorResponseException.Builder<ServerProblemDetail, T> {
-
-    protected Builder() {
-    }
-  }
-}
+// JSON Response:
+// {
+//   "type": "/errors/types/access",
+//   "title": "Unauthorized",
+//   "status": 401,
+//   "detail": "Invalid or expired token"
+// }
 ```
 
-The public server exception for API-exposed errors:
+### Server Errors
+Server errors handle internal server failures:
+
 ```java
-public non-sealed class PublicServerErrorResponseException extends ServerErrorResponseException {
-
-  private PublicServerErrorResponseException(ServerProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends ServerErrorResponseException.Builder<PublicServerErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public PublicServerErrorResponseException build() {
-      return new PublicServerErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-The internal server exception for internal use:
-```java
-public non-sealed class InternalServerErrorResponseException extends ServerErrorResponseException {
-
-  private InternalServerErrorResponseException(ServerProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder
-      extends ServerErrorResponseException.Builder<InternalServerErrorResponseException> {
-
-    private Builder() {
-    }
-
-    @Override
-    public InternalServerErrorResponseException build() {
-      return new InternalServerErrorResponseException(problemDetail, cause);
-    }
-  }
-}
-```
-
-And the payload for problem detail:
-```java
-public final class ServerProblemDetail extends ProblemDetail {
+public final class ServerErrorResponseException extends ApiErrorResponseException {
 
   private static final URI TYPE = URI.create("/errors/types/server");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  ServerProblemDetail() {
-    super();
-  }
-
-  private ServerProblemDetail(HttpStatus status, String title, String detail) {
-    super(status.value());
-    setType(TYPE);
-    setTitle(title);
-    if (detail != null) {
-      setDetail(detail);
-    }
+  private ServerErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
+    super(problemDetail, cause);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
+  private static ProblemDetail buildProblemDetail(String title, String detail) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
+    problemDetail.setType(TYPE);
+    problemDetail.setTitle(title);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    return problemDetail;
+  }
+
   public static final class Builder {
 
-    private HttpStatus status = DEFAULT_STATUS;
     private String title;
     private String detail;
 
     private Builder() {
-    }
-
-    public Builder status(HttpStatus status) {
-      this.status = status;
-      return this;
     }
 
     public Builder title(String title) {
@@ -1389,23 +949,72 @@ public final class ServerProblemDetail extends ProblemDetail {
       return this;
     }
 
-    public ServerProblemDetail build() {
-      return new ServerProblemDetail(status, title, detail);
+    public ServerErrorResponseException build() {
+      return new ServerErrorResponseException(buildProblemDetail(title, detail), null);
     }
   }
 }
 ```
 
+Usage example:
+```java
+throw ServerErrorResponseException.builder()
+    .title("Internal Server Error")
+    .detail("Database connection failed")
+    .build();
+
+// JSON Response:
+// {
+//   "type": "/errors/types/server",
+//   "title": "Internal Server Error",
+//   "status": 500,
+//   "detail": "Database connection failed"
+// }
+```
+
+### File Structure
+```
+exception/
+├── ApiErrorResponseException.java       # Base class
+├── ErrorAttributes.java                 # Marker interface
+├── ErrorCode.java                       # Error code interface
+├── access/
+│   └── AccessErrorResponseException.java
+├── domain/
+│   ├── AccountErrorCode.java
+│   ├── AccountSuspendedAttributes.java
+│   ├── AccountSuspendedException.java
+│   ├── DomainErrorCode.java
+│   ├── TransferErrorCode.java
+│   ├── TransferLimitExceededAttributes.java
+│   └── TransferLimitExceededException.java
+├── server/
+│   └── ServerErrorResponseException.java
+└── validation/
+    ├── InvalidFormatAttributes.java
+    ├── InvalidFormatValidationError.java
+    ├── MissingValueAttributes.java
+    ├── MissingValueValidationError.java
+    ├── ValidationError.java
+    ├── ValidationErrorCode.java
+    └── ValidationErrorResponseException.java
+```
+
+### Summary
+
+| Aspect | Value |
+|--------|-------|
+| Hierarchy depth | 2 levels |
+| Exception classes | 5 |
+| ProblemDetail classes | 0 (built internally) |
+| Code complexity | Low |
+| Exception creation | Single-step builder |
+
 ### Improvements
 This is a proposal, we would appreciate any simplification possible but our aim is to have an extensible solution and also allow us to be very specific when handling these events on the client side (future SDK).
 
-**Internal vs Public Errors:** All error types now support a public/internal distinction:
-- **Public exceptions** (`Public*ErrorResponseException`) are exposed to API consumers and documented in OpenAPI specs
-- **Internal exceptions** (`Internal*ErrorResponseException`) are for internal use only and should be handled/transformed before reaching the API boundary
-- This allows teams to throw internal errors during processing that get transformed to appropriate public errors at the API boundary
-
 Error codes have been abstracted using enums implementing the `ErrorCode` interface. Domain errors use `DomainErrorCode` which provides a domain prefix pattern (e.g., `transfer.transfer_limit_exceeded`), while validation errors use `ValidationErrorCode` for simpler codes (e.g., `invalid_format`, `missing_value`).
 
-The builder pattern has been adopted throughout for a more fluent and type-safe API, removing the need for multiple constructor overloads.
+The builder pattern has been adopted throughout for a fluent and type-safe API. Domain exception builders enforce mandatory attributes at build time using `Objects.requireNonNull()`.
 
 We implemented some tests to validate Jackson serialization and deserialization for these so the code should be fairly usable. Using this context with an LLM will probably give us a good head start if agreed upon the proposed solution.
