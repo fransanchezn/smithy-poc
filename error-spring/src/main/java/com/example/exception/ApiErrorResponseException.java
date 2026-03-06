@@ -16,10 +16,4 @@ public abstract class ApiErrorResponseException extends ErrorResponseException {
     super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, null);
     getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
-
-  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause,
-      String errorType) {
-    super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
-    getHeaders().add(ERROR_TYPE_HEADER, errorType);
-  }
 }
