@@ -36,4 +36,13 @@ public enum AccountErrorCode implements DomainErrorCode {
   public String toString() {
     return code;
   }
+
+  public static AccountErrorCode valueOfCode(String code) {
+    for (AccountErrorCode errorCode : values()) {
+      if (errorCode.getCode().equals(code)) {
+        return errorCode;
+      }
+    }
+    throw new IllegalArgumentException("No enum constant with code: " + code);
+  }
 }

@@ -16,7 +16,7 @@ dependencies {
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("org.assertj:assertj-core:3.25.3")
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
+    testImplementation("tools.jackson.core:jackson-databind:3.0.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

@@ -1,6 +1,8 @@
 package com.example.exception.domain;
 
 import com.example.exception.ErrorAttributes;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 
 /**
@@ -8,6 +10,14 @@ import java.math.BigDecimal;
  */
 public record TransferLimitExceededAttributes(BigDecimal amount, String currency) implements
     ErrorAttributes {
+
+  @JsonCreator
+  public TransferLimitExceededAttributes(
+      @JsonProperty("amount") BigDecimal amount,
+      @JsonProperty("currency") String currency) {
+    this.amount = amount;
+    this.currency = currency;
+  }
 
   public static Builder builder() {
     return new Builder();

@@ -14,7 +14,7 @@ public enum TransferErrorCode implements DomainErrorCode {
 
   TransferErrorCode(String errorCode) {
     this.errorCode = errorCode;
-    this.code = DOMAIN + "." + errorCode;
+    this.code = String.join(getDelimiter(), DOMAIN, errorCode);
   }
 
   @Override
@@ -35,5 +35,14 @@ public enum TransferErrorCode implements DomainErrorCode {
   @Override
   public String toString() {
     return code;
+  }
+
+  public static TransferErrorCode valueOfCode(String code) {
+    for (TransferErrorCode errorCode : values()) {
+      if (errorCode.getCode().equals(code)) {
+        return errorCode;
+      }
+    }
+    throw new IllegalArgumentException("No enum constant with code: " + code);
   }
 }

@@ -6,4 +6,8 @@ package com.example.exception;
 public interface ErrorCode {
 
   String getCode();
+
+  default String getDelimiter() {
+    return ".";
+  }
 }

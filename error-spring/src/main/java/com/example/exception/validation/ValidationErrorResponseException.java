@@ -1,6 +1,8 @@
 package com.example.exception.validation;
 
 import com.example.exception.ApiErrorResponseException;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +27,17 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     super(problemDetail, ERROR_TYPE);
   }
 
+  @JsonCreator
+  private ValidationErrorResponseException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance,
+      @JsonProperty("errors") List<ValidationError> errors) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance, errors), ERROR_TYPE);
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -36,11 +49,19 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
         .orElse(Collections.emptyList());
   }
 
-  private static ProblemDetail buildProblemDetail(List<ValidationError> errors) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(STATUS);
-    problemDetail.setType(TYPE);
-    problemDetail.setTitle(TITLE);
-    problemDetail.setProperty(ERRORS_PROPERTY, new ArrayList<>(errors));
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance, List<ValidationError> errors) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
+    problemDetail.setTitle(title != null ? title : TITLE);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
+    }
+    problemDetail.setProperty(ERRORS_PROPERTY,
+        errors != null ? new ArrayList<>(errors) : new ArrayList<>());
     return problemDetail;
   }
 
@@ -62,7 +83,7 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     }
 
     public ValidationErrorResponseException build() {
-      return new ValidationErrorResponseException(buildProblemDetail(errors));
+      return new ValidationErrorResponseException(buildProblemDetail(TYPE, TITLE, STATUS, null, null, errors));
     }
   }
 }

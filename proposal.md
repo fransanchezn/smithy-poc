@@ -2,7 +2,7 @@
 
 ## Context
 We want to define how our API errors are defined in Smithy. Errors in Smithy are defined as follows:
-```
+```smithy
 @error("client")
 @httpError(429)
 structure ThrottlingError {
@@ -12,7 +12,7 @@ structure ThrottlingError {
 ```
 
 Then in the operation definition, we can associate errors to given operations:
-```
+```smithy
 // List all users
 @readonly
 @http(method: "GET", uri: "/users")
@@ -46,7 +46,7 @@ We need few custom traits mainly to improve our OpenAPI documentation. This will
 
 #### Error type const
 These traits are accessError, serviceError, validationError and domainError. They will be defined:
-```
+```smithy
 // --------- Access Error ---------
 @trait
 structure accessError {}
@@ -68,7 +68,7 @@ These traits are going to help us determine to which "category" each specific er
 
 #### Const (constant values)
 Trait that is applicable to members of a structure to indicate it is a constant value. It will be transformed into a static value in Java. This is NOT a default but a specific immutable value
-```
+```smithy
 @const("/errors/types/domain")
 @required
 type: String
@@ -76,7 +76,7 @@ type: String
 
 #### MemberExamples (examples)
 This trait help us generate better openAPI specs where we can provide example for given fields. This won't have an impact in the java generated code (maybe javadoc if we want to generate examples).
-```
+```smithy
 @memberExample("/api/v1/users")
 instance: String
 ```
@@ -91,17 +91,22 @@ classDiagram
 
     class ApiErrorResponseException {
         <<abstract>>
+        +getType(): URI
+        +getTitle(): String
+        +getStatus(): int
+        +getDetail(): String
+        +getInstance(): URI
     }
 
     class TransferLimitExceededException {
         <<final>>
-        +getCode(): String
+        +getCode(): TransferErrorCode
         +getAttributes(): TransferLimitExceededAttributes
     }
 
     class AccountSuspendedException {
         <<final>>
-        +getCode(): String
+        +getCode(): AccountErrorCode
         +getAttributes(): AccountSuspendedAttributes
     }
 
@@ -147,7 +152,7 @@ classDiagram
 ```
 
 
-```
+```smithy
 // --------- Base API Error Exception ---------
 @mixin
 structure ApiErrorException {
@@ -174,7 +179,7 @@ structure ApiErrorException {
 ### Domain errors structure
 The domain errors schema:
 
-```
+```smithy
 // --------- Domain Error ---------
 @trait
 structure domainError {}
@@ -192,7 +197,7 @@ structure DomainApiErrorException with [ApiErrorException] {
 ```
 
 Specific example:
-```
+```smithy
 // ------------ TransferLimitExceeded Domain Error ------------
 structure TransferLimitExceededAttributes {
     @memberExample(15000.00)
@@ -227,7 +232,7 @@ structure TransferLimitExceededDomainApiErrorException with [DomainApiErrorExcep
 ### Validation errors structure
 Validation errors are slightly different because we can return a list of errors. We are not documenting every single error in every endpoint since it could be very noisy so we are having a generic example with all the possible schemas on every endpoint (ValidationProblemDetail). Then we will have all the possible ValidationDetail implementations defined
 
-```
+```smithy
 // --------- Validation Error ---------
 @trait
 structure validationError {}
@@ -307,7 +312,7 @@ structure ValidationApiErrorExceptionImpl with [ValidationApiErrorException] {
 ```
 
 Json example for Validation Error:
-```
+```json
 {
     "type": "/errors/types/validation",
     "title": "Validation Problem",
@@ -333,7 +338,7 @@ Json example for Validation Error:
 ```
 
 Specific validation error details would look like this:
-```
+```smithy
 // ------------ InvalidFormat Validation Error ------------
 structure InvalidFormatAttributes {
     @memberExample("^[a-zA-Z0-9]+$")
@@ -369,15 +374,17 @@ Now the juicy bits, the specific SpringBoot implementation for these errors! We 
 ### Design Principles
 
 1. **Flat Hierarchy**: Only 2 levels of inheritance (Spring's `ErrorResponseException` -> `ApiErrorResponseException` -> concrete exceptions)
-2. **Self-Contained**: Each exception builds its own `ProblemDetail` internally
-3. **Type Safety**: Domain exceptions use typed attributes records
-4. **Immutability**: Exceptions are immutable, built via builders
+2. **Self-Contained**: Each exception builds its own `ProblemDetail` internally via a single `buildProblemDetail` method
+3. **Type Safety**: Domain exceptions use typed error code enums and attributes records
+4. **Immutability**: Exceptions are immutable, built via builders with private constructors
 5. **RFC 7807 Compliant**: All responses follow the Problem Details specification
 6. **Error Type Header**: Every exception includes an `x-error-type` header with the class name for easy identification
+7. **Direct Property Access**: All exceptions provide getters (getType, getTitle, getStatus, getDetail, getInstance) to avoid accessing getBody() directly
+8. **JSON Deserialization**: Each exception has a private `@JsonCreator` constructor for deserializing from JSON responses
 
 ### Base Classes
 
-An abstract class (ApiErrorResponseException) will help us identify our errors vs spring errors (ErrorResponseException). It also provides the `x-error-type` response header containing the exception class name:
+An abstract class (ApiErrorResponseException) will help us identify our errors vs spring errors (ErrorResponseException). It also provides the `x-error-type` response header and common property getters for RFC 7807 fields:
 ```java
 public abstract class ApiErrorResponseException extends ErrorResponseException {
 
@@ -388,10 +395,24 @@ public abstract class ApiErrorResponseException extends ErrorResponseException {
     getHeaders().add(ERROR_TYPE_HEADER, errorType);
   }
 
-  protected ApiErrorResponseException(ProblemDetail problemDetail, Throwable cause,
-      String errorType) {
-    super(HttpStatusCode.valueOf(problemDetail.getStatus()), problemDetail, cause);
-    getHeaders().add(ERROR_TYPE_HEADER, errorType);
+  public URI getType() {
+    return getBody().getType();
+  }
+
+  public String getTitle() {
+    return getBody().getTitle();
+  }
+
+  public int getStatus() {
+    return getBody().getStatus();
+  }
+
+  public String getDetail() {
+    return getBody().getDetail();
+  }
+
+  public URI getInstance() {
+    return getBody().getInstance();
   }
 }
 ```
@@ -439,9 +460,10 @@ public interface ErrorCode {
 ### Domain Errors
 Domain exceptions extend `ApiErrorResponseException` directly and build their own `ProblemDetail`. Each exception has a fixed type, title, status, and code, with configurable detail and type-safe attributes.
 
-We use enums for domain error codes that follow a domain.error_code pattern:
+We use enums for domain error codes that follow a domain.error_code pattern. The `DomainErrorCode` interface is sealed to only permit specific domain error code enums:
 ```java
-public interface DomainErrorCode extends ErrorCode {
+public sealed interface DomainErrorCode extends ErrorCode
+    permits TransferErrorCode, AccountErrorCode {
 
   String getDomain();
 
@@ -461,7 +483,7 @@ public enum TransferErrorCode implements DomainErrorCode {
 
   TransferErrorCode(String errorCode) {
     this.errorCode = errorCode;
-    this.code = DOMAIN + "." + errorCode;
+    this.code = String.join(getDelimiter(), DOMAIN, errorCode);
   }
 
   @Override
@@ -483,13 +505,23 @@ public enum TransferErrorCode implements DomainErrorCode {
   public String toString() {
     return code;
   }
+
+  public static TransferErrorCode valueOfCode(String code) {
+    for (TransferErrorCode errorCode : values()) {
+      if (errorCode.getCode().equals(code)) {
+        return errorCode;
+      }
+    }
+    throw new IllegalArgumentException("No enum constant with code: " + code);
+  }
 }
 ```
 
-The specific domain exception implementation:
+The specific domain exception implementation (note: common getters like `getType()`, `getTitle()`, etc. are inherited from `ApiErrorResponseException`):
 ```java
 public final class TransferLimitExceededException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "TransferLimitExceededException";
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
@@ -497,16 +529,31 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
 
-  private TransferLimitExceededException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private TransferLimitExceededException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
+  }
+
+  @JsonCreator
+  private TransferLimitExceededException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance,
+      @JsonProperty("code") String code,
+      @JsonProperty("attributes") TransferLimitExceededAttributes attributes) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance,
+        TransferErrorCode.valueOfCode(code), attributes), ERROR_TYPE);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  public String getCode() {
-    return CODE.getCode();
+  public TransferErrorCode getCode() {
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (TransferErrorCode) props.get(CODE_PROPERTY))
+        .orElse(CODE);
   }
 
   public TransferLimitExceededAttributes getAttributes() {
@@ -515,15 +562,19 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
         .orElse(null);
   }
 
-  private static ProblemDetail buildProblemDetail(String detail,
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance, TransferErrorCode code,
       TransferLimitExceededAttributes attributes) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
-    problemDetail.setType(TYPE);
-    problemDetail.setTitle(TITLE);
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
+    problemDetail.setTitle(title != null ? title : TITLE);
     if (detail != null) {
       problemDetail.setDetail(detail);
     }
-    problemDetail.setProperty(CODE_PROPERTY, CODE.getCode());
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
+    }
+    problemDetail.setProperty(CODE_PROPERTY, code != null ? code : CODE.getCode());
     problemDetail.setProperty(ATTRIBUTES_PROPERTY, attributes);
     return problemDetail;
   }
@@ -548,7 +599,8 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
 
     public TransferLimitExceededException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new TransferLimitExceededException(buildProblemDetail(detail, attributes), null);
+      return new TransferLimitExceededException(
+          buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null, CODE, attributes));
     }
   }
 }
@@ -618,13 +670,26 @@ Validation errors contain a list of error details rather than specific exception
 ```java
 public final class ValidationErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "ValidationErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/validation");
   private static final String TITLE = "Validation Problem";
   private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
   private static final String ERRORS_PROPERTY = "errors";
 
-  private ValidationErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private ValidationErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
+  }
+
+  @JsonCreator
+  private ValidationErrorResponseException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance,
+      @JsonProperty("errors") List<ValidationError> errors) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance, errors),
+        ERROR_TYPE);
   }
 
   public static Builder builder() {
@@ -638,11 +703,19 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
         .orElse(Collections.emptyList());
   }
 
-  private static ProblemDetail buildProblemDetail(List<ValidationError> errors) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(STATUS);
-    problemDetail.setType(TYPE);
-    problemDetail.setTitle(TITLE);
-    problemDetail.setProperty(ERRORS_PROPERTY, new ArrayList<>(errors));
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance, List<ValidationError> errors) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
+    problemDetail.setTitle(title != null ? title : TITLE);
+    if (detail != null) {
+      problemDetail.setDetail(detail);
+    }
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
+    }
+    problemDetail.setProperty(ERRORS_PROPERTY,
+        errors != null ? new ArrayList<>(errors) : new ArrayList<>());
     return problemDetail;
   }
 
@@ -664,7 +737,8 @@ public final class ValidationErrorResponseException extends ApiErrorResponseExce
     }
 
     public ValidationErrorResponseException build() {
-      return new ValidationErrorResponseException(buildProblemDetail(errors), null);
+      return new ValidationErrorResponseException(
+          buildProblemDetail(TYPE, TITLE, STATUS, null, null, errors));
     }
   }
 }
@@ -762,7 +836,7 @@ public enum ValidationErrorCode implements ErrorCode {
 }
 ```
 
-And the specific implementation for the errors and their error attributes:
+And the specific implementation for the errors and their error attributes. Note that each validation error type has a private `@JsonCreator` constructor for deserialization:
 ```java
 public final class InvalidFormatValidationError extends ValidationError {
 
@@ -873,23 +947,39 @@ Access errors handle authentication and authorization failures:
 ```java
 public final class AccessErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "AccessErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/access");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
 
-  private AccessErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private AccessErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
+  }
+
+  @JsonCreator
+  private AccessErrorResponseException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance),
+        ERROR_TYPE);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  private static ProblemDetail buildProblemDetail(String title, String detail) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
-    problemDetail.setType(TYPE);
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
     problemDetail.setTitle(title);
     if (detail != null) {
       problemDetail.setDetail(detail);
+    }
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
     }
     return problemDetail;
   }
@@ -913,7 +1003,8 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
     }
 
     public AccessErrorResponseException build() {
-      return new AccessErrorResponseException(buildProblemDetail(title, detail), null);
+      return new AccessErrorResponseException(
+          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null));
     }
   }
 }
@@ -941,23 +1032,39 @@ Server errors handle internal server failures:
 ```java
 public final class ServerErrorResponseException extends ApiErrorResponseException {
 
+  private static final String ERROR_TYPE = "ServerErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/server");
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  private ServerErrorResponseException(ProblemDetail problemDetail, Throwable cause) {
-    super(problemDetail, cause);
+  private ServerErrorResponseException(ProblemDetail problemDetail) {
+    super(problemDetail, ERROR_TYPE);
+  }
+
+  @JsonCreator
+  private ServerErrorResponseException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance),
+        ERROR_TYPE);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  private static ProblemDetail buildProblemDetail(String title, String detail) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
-    problemDetail.setType(TYPE);
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
     problemDetail.setTitle(title);
     if (detail != null) {
       problemDetail.setDetail(detail);
+    }
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
     }
     return problemDetail;
   }
@@ -981,7 +1088,8 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
     }
 
     public ServerErrorResponseException build() {
-      return new ServerErrorResponseException(buildProblemDetail(title, detail), null);
+      return new ServerErrorResponseException(
+          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null));
     }
   }
 }
@@ -1003,10 +1111,69 @@ throw ServerErrorResponseException.builder()
 // }
 ```
 
+### Client-Side Deserialization
+For client-side usage, we provide an `ApiErrorResponseDeserializer` that uses the `x-error-type` header to deserialize JSON responses into the correct exception type:
+
+```java
+public class ApiErrorResponseDeserializer {
+
+  private static final Map<String, Class<? extends ApiErrorResponseException>> EXCEPTION_TYPES =
+      Map.of(
+          "TransferLimitExceededException", TransferLimitExceededException.class,
+          "AccountSuspendedException", AccountSuspendedException.class,
+          "ValidationErrorResponseException", ValidationErrorResponseException.class,
+          "AccessErrorResponseException", AccessErrorResponseException.class,
+          "ServerErrorResponseException", ServerErrorResponseException.class
+      );
+
+  private final ObjectMapper objectMapper;
+
+  public ApiErrorResponseDeserializer(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T extends ApiErrorResponseException> T deserialize(String json, String errorTypeHeader)
+      throws JacksonException {
+    Class<? extends ApiErrorResponseException> targetClass = EXCEPTION_TYPES.get(errorTypeHeader);
+    if (targetClass == null) {
+      throw new IllegalArgumentException("Unknown error type: " + errorTypeHeader);
+    }
+    return (T) objectMapper.readValue(json, targetClass);
+  }
+
+  public <T extends ApiErrorResponseException> T deserialize(String json, Class<T> targetClass)
+      throws JacksonException {
+    return objectMapper.readValue(json, targetClass);
+  }
+
+  public Class<? extends ApiErrorResponseException> getExceptionClass(String errorTypeHeader) {
+    return EXCEPTION_TYPES.get(errorTypeHeader);
+  }
+}
+```
+
+Usage example:
+```java
+// Using HTTP client and reading the x-error-type header
+String json = response.body();
+String errorType = response.headers().firstValue("x-error-type").orElse(null);
+
+ApiErrorResponseDeserializer deserializer = new ApiErrorResponseDeserializer(objectMapper);
+TransferLimitExceededException exception = deserializer.deserialize(json, errorType);
+
+// Type-safe access to all properties
+TransferErrorCode code = exception.getCode();
+TransferLimitExceededAttributes attrs = exception.getAttributes();
+BigDecimal amount = attrs.amount();
+String currency = attrs.currency();
+```
+
 ### File Structure
 ```
 exception/
 ├── ApiErrorResponseException.java       # Base class
+├── ApiErrorResponseDeserializer.java    # Client-side deserializer
 ├── ErrorAttributes.java                 # Marker interface
 ├── ErrorCode.java                       # Error code interface
 ├── access/
@@ -1040,6 +1207,21 @@ exception/
 | ProblemDetail classes | 0 (built internally) |
 | Code complexity | Low |
 | Exception creation | Single-step builder |
+| Deserialization | Via `@JsonCreator` + `ApiErrorResponseDeserializer` |
+
+### Key Implementation Patterns
+
+1. **Single `buildProblemDetail` method**: Each exception has one static method that handles both builder construction and JSON deserialization, ensuring consistent behavior.
+
+2. **Private constructors**: All constructors are private - use the builder for creation and `@JsonCreator` for deserialization.
+
+3. **Typed error codes**: Domain exceptions return typed enums (e.g., `TransferErrorCode`) from `getCode()`, not strings. Use `code.getCode()` to get the string value.
+
+4. **Direct property access**: Common getters (`getType()`, `getTitle()`, `getStatus()`, `getDetail()`, `getInstance()`) are defined in `ApiErrorResponseException` base class to avoid accessing `getBody()` directly.
+
+5. **`valueOfCode` for deserialization**: Each error code enum provides a `valueOfCode(String)` method to convert JSON string codes back to enum values.
+
+6. **Sealed types**: `DomainErrorCode` and `ValidationError` use sealed interfaces/classes to restrict implementations.
 
 ### Improvements
 This is a proposal, we would appreciate any simplification possible but our aim is to have an extensible solution and also allow us to be very specific when handling these events on the client side (future SDK).
@@ -1048,4 +1230,4 @@ Error codes have been abstracted using enums implementing the `ErrorCode` interf
 
 The builder pattern has been adopted throughout for a fluent and type-safe API. Domain exception builders enforce mandatory attributes at build time using `Objects.requireNonNull()`.
 
-We implemented some tests to validate Jackson serialization and deserialization for these so the code should be fairly usable. Using this context with an LLM will probably give us a good head start if agreed upon the proposed solution.
+We implemented comprehensive tests to validate Jackson serialization and deserialization (including round-trip tests) so the code should be fairly usable. Using this context with an LLM will probably give us a good head start if agreed upon the proposed solution.

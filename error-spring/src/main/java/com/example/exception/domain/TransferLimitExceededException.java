@@ -1,6 +1,8 @@
 package com.example.exception.domain;
 
 import com.example.exception.ApiErrorResponseException;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,12 +26,27 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
     super(problemDetail, ERROR_TYPE);
   }
 
+  @JsonCreator
+  private TransferLimitExceededException(
+      @JsonProperty("type") URI type,
+      @JsonProperty("title") String title,
+      @JsonProperty("status") int status,
+      @JsonProperty("detail") String detail,
+      @JsonProperty("instance") String instance,
+      @JsonProperty("code") String code,
+      @JsonProperty("attributes") TransferLimitExceededAttributes attributes) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance, TransferErrorCode.valueOfCode(code), attributes),
+        ERROR_TYPE);
+  }
+
   public static Builder builder() {
     return new Builder();
   }
 
-  public String getCode() {
-    return CODE.getCode();
+  public TransferErrorCode getCode() {
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (TransferErrorCode) props.get(CODE_PROPERTY))
+        .orElse(CODE);
   }
 
   public TransferLimitExceededAttributes getAttributes() {
@@ -38,15 +55,18 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
         .orElse(null);
   }
 
-  private static ProblemDetail buildProblemDetail(String detail,
-      TransferLimitExceededAttributes attributes) {
-    ProblemDetail problemDetail = ProblemDetail.forStatus(DEFAULT_STATUS);
-    problemDetail.setType(TYPE);
-    problemDetail.setTitle(TITLE);
+  private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
+      String detail, String instance, TransferErrorCode code, TransferLimitExceededAttributes attributes) {
+    ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+    problemDetail.setType(type != null ? type : TYPE);
+    problemDetail.setTitle(title != null ? title : TITLE);
     if (detail != null) {
       problemDetail.setDetail(detail);
     }
-    problemDetail.setProperty(CODE_PROPERTY, CODE.getCode());
+    if (instance != null) {
+      problemDetail.setInstance(URI.create(instance));
+    }
+    problemDetail.setProperty(CODE_PROPERTY, code != null ? code : CODE.getCode());
     problemDetail.setProperty(ATTRIBUTES_PROPERTY, attributes);
     return problemDetail;
   }
@@ -71,7 +91,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
 
     public TransferLimitExceededException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new TransferLimitExceededException(buildProblemDetail(detail, attributes));
+      return new TransferLimitExceededException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null, CODE, attributes));
     }
   }
 }
