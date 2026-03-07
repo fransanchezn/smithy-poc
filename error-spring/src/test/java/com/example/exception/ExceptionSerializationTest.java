@@ -27,26 +27,29 @@ import org.springframework.http.converter.json.ProblemDetailJacksonMixin;
 class ExceptionSerializationTest {
 
   private ObjectMapper objectMapper;
+  private ApiErrorResponseDeserializer deserializer;
 
   @BeforeEach
   void setUp() {
     objectMapper = JsonMapper.builder()
         .addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class)
         .build();
+    deserializer = new ApiErrorResponseDeserializer(objectMapper);
   }
 
   @Nested
   class AccessExceptionTest {
 
     @Test
-    void shouldSerializeAccessException() throws Exception {
-      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+    void shouldSerializeAndDeserializeAccessException() throws Exception {
+      AccessErrorResponseException original = AccessErrorResponseException.builder()
           .title("Unauthorized")
           .detail("Invalid token")
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      AccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
       assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
@@ -80,14 +83,15 @@ class ExceptionSerializationTest {
   class ServerExceptionTest {
 
     @Test
-    void shouldSerializeServerErrorException() throws Exception {
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
+    void shouldSerializeAndDeserializeServerErrorException() throws Exception {
+      ServerErrorResponseException original = ServerErrorResponseException.builder()
           .title("Internal Server Error")
           .detail("Database connection failed")
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      ServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
       assertThat(deserialized.getTitle()).isEqualTo("Internal Server Error");
@@ -121,8 +125,8 @@ class ExceptionSerializationTest {
   class DomainExceptionTest {
 
     @Test
-    void shouldSerializeTransferLimitExceededException() throws Exception {
-      TransferLimitExceededException exception = TransferLimitExceededException.builder()
+    void shouldSerializeAndDeserializeTransferLimitExceededException() throws Exception {
+      TransferLimitExceededException original = TransferLimitExceededException.builder()
           .detail("Your transfer exceeds the daily limit")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("50000.00"))
@@ -130,33 +134,38 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      TransferLimitExceededException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
       assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Your transfer exceeds the daily limit");
-      assertThat(deserialized.getProperties().get("code")).isEqualTo("transfer.transfer_limit_exceeded");
+      assertThat(deserialized.getCode().getCode()).isEqualTo("transfer.transfer_limit_exceeded");
+      assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo("50000.00");
+      assertThat(deserialized.getAttributes().currency()).isEqualTo("EUR");
     }
 
     @Test
-    void shouldSerializeAccountSuspendedException() throws Exception {
-      AccountSuspendedException exception = AccountSuspendedException.builder()
+    void shouldSerializeAndDeserializeAccountSuspendedException() throws Exception {
+      AccountSuspendedException original = AccountSuspendedException.builder()
           .detail("Account access denied")
           .attributes(AccountSuspendedAttributes.builder()
               .reason("Multiple failed login attempts")
               .build())
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      AccountSuspendedException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
       assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
       assertThat(deserialized.getStatus()).isEqualTo(422);
       assertThat(deserialized.getDetail()).isEqualTo("Account access denied");
-      assertThat(deserialized.getProperties().get("code")).isEqualTo("account.account_suspended");
+      assertThat(deserialized.getCode().getCode()).isEqualTo("account.account_suspended");
+      assertThat(deserialized.getAttributes().reason()).isEqualTo("Multiple failed login attempts");
     }
 
     @Test
@@ -193,8 +202,8 @@ class ExceptionSerializationTest {
   class ValidationExceptionTest {
 
     @Test
-    void shouldSerializeInvalidFormatErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+    void shouldSerializeAndDeserializeInvalidFormatErrors() throws Exception {
+      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Email format is invalid")
               .ref("user.email")
@@ -211,21 +220,27 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      ValidationErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/validation"));
       assertThat(deserialized.getTitle()).isEqualTo("Validation Problem");
       assertThat(deserialized.getStatus()).isEqualTo(400);
-      assertThat(exception.getErrors()).hasSize(2);
-      assertThat(exception.getErrors().get(0).getCode()).isEqualTo("invalid_format");
-      assertThat(exception.getErrors().get(0).getDetail()).isEqualTo("Email format is invalid");
-      assertThat(exception.getErrors().get(0).getRef()).isEqualTo("user.email");
+      assertThat(deserialized.getErrors()).hasSize(2);
+      assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
+      assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("Email format is invalid");
+      assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo("user.email");
+      assertThat(((InvalidFormatValidationError) deserialized.getErrors().get(0)).getAttributes().pattern())
+          .isEqualTo("^[\\w.-]+@[\\w.-]+\\.\\w+$");
+      assertThat(deserialized.getErrors().get(1).getCode()).isEqualTo("invalid_format");
+      assertThat(deserialized.getErrors().get(1).getDetail()).isEqualTo("Date format is invalid");
+      assertThat(deserialized.getErrors().get(1).getRef()).isEqualTo("user.birthDate");
     }
 
     @Test
-    void shouldSerializeMissingValueErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+    void shouldSerializeAndDeserializeMissingValueErrors() throws Exception {
+      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(MissingValueValidationError.builder()
               .detail("First name is required")
               .ref("firstName")
@@ -242,20 +257,25 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      String json = objectMapper.writeValueAsString(exception.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      ValidationErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/validation"));
       assertThat(deserialized.getTitle()).isEqualTo("Validation Problem");
       assertThat(deserialized.getStatus()).isEqualTo(400);
-      assertThat(exception.getErrors()).hasSize(2);
-      assertThat(exception.getErrors().get(0).getCode()).isEqualTo("missing_value");
-      assertThat(exception.getErrors().get(0).getDetail()).isEqualTo("First name is required");
+      assertThat(deserialized.getErrors()).hasSize(2);
+      assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("missing_value");
+      assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("First name is required");
+      assertThat(((MissingValueValidationError) deserialized.getErrors().get(0)).getAttributes().missingField())
+          .isEqualTo("firstName");
+      assertThat(deserialized.getErrors().get(1).getCode()).isEqualTo("missing_value");
+      assertThat(deserialized.getErrors().get(1).getDetail()).isEqualTo("Last name is required");
     }
 
     @Test
-    void shouldSerializeMixedErrors() throws Exception {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+    void shouldSerializeAndDeserializeMixedErrors() throws Exception {
+      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Invalid email")
               .ref("email")
@@ -272,14 +292,18 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      assertThat(exception.getErrors()).hasSize(2);
-      assertThat(exception.getErrors().get(0).getCode()).isEqualTo("invalid_format");
-      assertThat(exception.getErrors().get(1).getCode()).isEqualTo("missing_value");
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      ValidationErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+
+      assertThat(deserialized.getErrors()).hasSize(2);
+      assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
+      assertThat(deserialized.getErrors().get(1).getCode()).isEqualTo("missing_value");
     }
 
     @Test
-    void shouldProvideTypedAccessToErrors() {
-      ValidationErrorResponseException exception = ValidationErrorResponseException.builder()
+    void shouldProvideTypedAccessToErrorsAfterDeserialization() throws Exception {
+      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Invalid email")
               .ref("email")
@@ -289,10 +313,14 @@ class ExceptionSerializationTest {
               .build())
           .build();
 
-      assertThat(exception.getErrors()).hasSize(1);
-      assertThat(exception.getErrors().get(0).getCode()).isEqualTo("invalid_format");
-      assertThat(exception.getErrors().get(0).getDetail()).isEqualTo("Invalid email");
-      assertThat(exception.getErrors().get(0).getRef()).isEqualTo("email");
+      String json = objectMapper.writeValueAsString(original.getBody());
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      ValidationErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+
+      assertThat(deserialized.getErrors()).hasSize(1);
+      assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
+      assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("Invalid email");
+      assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo("email");
     }
 
     @Test
@@ -326,13 +354,16 @@ class ExceptionSerializationTest {
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
+      String errorType = original.getHeaders().getFirst("x-error-type");
+      TransferLimitExceededException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
       assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
       assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
       assertThat(deserialized.getDetail()).isEqualTo(original.getDetail());
-      assertThat(deserialized.getProperties().get("code")).isEqualTo(original.getCode().getCode());
+      assertThat(deserialized.getCode()).isEqualTo(original.getCode());
+      assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo(original.getAttributes().amount());
+      assertThat(deserialized.getAttributes().currency()).isEqualTo(original.getAttributes().currency());
     }
 
     @Test
@@ -348,124 +379,29 @@ class ExceptionSerializationTest {
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
-      ProblemDetail deserialized = objectMapper.readValue(json, ProblemDetail.class);
-
-      assertThat(deserialized.getType()).isEqualTo(original.getType());
-      assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
-      assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
-      assertThat(original.getErrors()).hasSize(1);
-      assertThat(original.getErrors().get(0).getCode()).isEqualTo("invalid_format");
-      assertThat(original.getErrors().get(0).getDetail()).isEqualTo("Invalid format");
-      assertThat(original.getErrors().get(0).getRef()).isEqualTo("field");
-    }
-  }
-
-  @Nested
-  class TypeSafeDeserializationTest {
-
-    private ApiErrorResponseDeserializer deserializer;
-
-    @BeforeEach
-    void setUp() {
-      deserializer = new ApiErrorResponseDeserializer(objectMapper);
-    }
-
-    @Test
-    void shouldDeserializeTransferLimitExceededExceptionWithTypeSafety() throws Exception {
-      TransferLimitExceededException original = TransferLimitExceededException.builder()
-          .detail("Your transfer exceeds the daily limit")
-          .attributes(TransferLimitExceededAttributes.builder()
-              .amount(new BigDecimal("50000.00"))
-              .currency("EUR")
-              .build())
-          .build();
-
-      String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-
-      TransferLimitExceededException deserialized = deserializer.deserialize(json, errorType);
-
-      assertThat(deserialized.getType()).isEqualTo(original.getType());
-      assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
-      assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
-      assertThat(deserialized.getDetail()).isEqualTo(original.getDetail());
-      assertThat(deserialized.getCode()).isEqualTo(original.getCode());
-      assertThat(deserialized.getAttributes().amount())
-          .isEqualByComparingTo(original.getAttributes().amount());
-      assertThat(deserialized.getAttributes().currency())
-          .isEqualTo(original.getAttributes().currency());
-    }
-
-    @Test
-    void shouldDeserializeAccountSuspendedExceptionWithTypeSafety() throws Exception {
-      AccountSuspendedException original = AccountSuspendedException.builder()
-          .detail("Account access denied")
-          .attributes(AccountSuspendedAttributes.builder()
-              .reason("Multiple failed login attempts")
-              .build())
-          .build();
-
-      String json = objectMapper.writeValueAsString(original.getBody());
-      String errorType = original.getHeaders().getFirst("x-error-type");
-
-      AccountSuspendedException deserialized = deserializer.deserialize(json, errorType);
-
-      assertThat(deserialized.getType()).isEqualTo(original.getType());
-      assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
-      assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
-      assertThat(deserialized.getDetail()).isEqualTo(original.getDetail());
-      assertThat(deserialized.getCode()).isEqualTo(original.getCode());
-      assertThat(deserialized.getAttributes().reason())
-          .isEqualTo(original.getAttributes().reason());
-    }
-
-    @Test
-    void shouldDeserializeValidationExceptionWithTypeSafety() throws Exception {
-      ValidationErrorResponseException original = ValidationErrorResponseException.builder()
-          .error(InvalidFormatValidationError.builder()
-              .detail("Email format is invalid")
-              .ref("user.email")
-              .attributes(InvalidFormatAttributes.builder()
-                  .pattern("^[\\w.-]+@[\\w.-]+\\.\\w+$")
-                  .build())
-              .build())
-          .error(MissingValueValidationError.builder()
-              .detail("Name is required")
-              .ref("user.name")
-              .attributes(MissingValueAttributes.builder()
-                  .missingField("name")
-                  .build())
-              .build())
-          .build();
-
-      String json = objectMapper.writeValueAsString(original.getBody());
-      String errorType = original.getHeaders().getFirst("x-error-type");
-
       ValidationErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
       assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
       assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
-      assertThat(deserialized.getErrors()).hasSize(2);
+      assertThat(deserialized.getErrors()).hasSize(1);
       assertThat(deserialized.getErrors().get(0).getCode()).isEqualTo("invalid_format");
-      assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("Email format is invalid");
-      assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo("user.email");
-      assertThat(((InvalidFormatValidationError) deserialized.getErrors().get(0)).getAttributes()
-          .pattern()).isEqualTo("^[\\w.-]+@[\\w.-]+\\.\\w+$");
-      assertThat(deserialized.getErrors().get(1).getCode()).isEqualTo("missing_value");
-      assertThat(deserialized.getErrors().get(1).getDetail()).isEqualTo("Name is required");
+      assertThat(deserialized.getErrors().get(0).getDetail()).isEqualTo("Invalid format");
+      assertThat(deserialized.getErrors().get(0).getRef()).isEqualTo("field");
+      assertThat(((InvalidFormatValidationError) deserialized.getErrors().get(0)).getAttributes().pattern())
+          .isEqualTo("pattern");
     }
 
     @Test
-    void shouldDeserializeAccessExceptionWithTypeSafety() throws Exception {
+    void shouldRoundTripAccessException() throws Exception {
       AccessErrorResponseException original = AccessErrorResponseException.builder()
-          .title("Unauthorized")
-          .detail("Invalid token")
+          .title("Forbidden")
+          .detail("Access denied")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-
       AccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
@@ -475,15 +411,14 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldDeserializeServerExceptionWithTypeSafety() throws Exception {
+    void shouldRoundTripServerException() throws Exception {
       ServerErrorResponseException original = ServerErrorResponseException.builder()
-          .title("Internal Server Error")
-          .detail("Database connection failed")
+          .title("Service Unavailable")
+          .detail("Please try again later")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-
       ServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
@@ -491,6 +426,10 @@ class ExceptionSerializationTest {
       assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
       assertThat(deserialized.getDetail()).isEqualTo(original.getDetail());
     }
+  }
+
+  @Nested
+  class DeserializerApiTest {
 
     @Test
     void shouldDeserializeDirectlyToSpecificClass() throws Exception {
