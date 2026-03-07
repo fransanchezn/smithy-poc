@@ -3,7 +3,7 @@ package com.example.exception;
 import com.example.exception.access.InvalidTokenAccessErrorResponseException;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.TransferLimitExceededException;
-import com.example.exception.server.ServerErrorResponseException;
+import com.example.exception.server.InternalServerErrorResponseException;
 import com.example.exception.validation.ValidationErrorResponseException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -21,7 +21,7 @@ public class ApiErrorResponseDeserializer {
           "AccountSuspendedException", AccountSuspendedException.class,
           "ValidationErrorResponseException", ValidationErrorResponseException.class,
           "InvalidTokenAccessErrorResponseException", InvalidTokenAccessErrorResponseException.class,
-          "ServerErrorResponseException", ServerErrorResponseException.class
+          "InternalServerErrorResponseException", InternalServerErrorResponseException.class
       );
 
   private final ObjectMapper objectMapper;

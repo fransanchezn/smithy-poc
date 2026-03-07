@@ -9,7 +9,7 @@ import com.example.exception.domain.AccountSuspendedAttributes;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.TransferLimitExceededAttributes;
 import com.example.exception.domain.TransferLimitExceededException;
-import com.example.exception.server.ServerErrorResponseException;
+import com.example.exception.server.InternalServerErrorResponseException;
 import com.example.exception.validation.InvalidFormatAttributes;
 import com.example.exception.validation.InvalidFormatValidationError;
 import com.example.exception.validation.MissingValueAttributes;
@@ -80,14 +80,13 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeServerErrorException() {
-      ServerErrorResponseException original = ServerErrorResponseException.builder()
-          .title("Internal Server Error")
+      InternalServerErrorResponseException original = InternalServerErrorResponseException.builder()
           .detail("Database connection failed")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      ServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      InternalServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/server"));
       assertThat(deserialized.getTitle()).isEqualTo("Internal Server Error");
@@ -97,8 +96,7 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldHaveCorrectStatusCode() {
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
-          .title("Internal Server Error")
+      InternalServerErrorResponseException exception = InternalServerErrorResponseException.builder()
           .detail("test")
           .build();
 
@@ -107,13 +105,12 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldHaveErrorTypeHeader() {
-      ServerErrorResponseException exception = ServerErrorResponseException.builder()
-          .title("Internal Server Error")
+      InternalServerErrorResponseException exception = InternalServerErrorResponseException.builder()
           .detail("test")
           .build();
 
       assertThat(exception.getHeaders().getFirst("x-error-type"))
-          .isEqualTo("ServerErrorResponseException");
+          .isEqualTo("InternalServerErrorResponseException");
     }
   }
 
@@ -402,14 +399,13 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldRoundTripServerException() {
-      ServerErrorResponseException original = ServerErrorResponseException.builder()
-          .title("Service Unavailable")
+      InternalServerErrorResponseException original = InternalServerErrorResponseException.builder()
           .detail("Please try again later")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      ServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      InternalServerErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
       assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());

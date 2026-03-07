@@ -10,18 +10,19 @@ import org.springframework.http.ProblemDetail;
 /**
  * Exception for server-side errors (internal errors, service unavailable).
  */
-public final class ServerErrorResponseException extends ApiErrorResponseException {
+public final class InternalServerErrorResponseException extends ApiErrorResponseException {
 
-  private static final String ERROR_TYPE = "ServerErrorResponseException";
+  private static final String ERROR_TYPE = "InternalServerErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/server");
+  private static final String TITLE = "Internal Server Error";
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  private ServerErrorResponseException(ProblemDetail problemDetail) {
+  private InternalServerErrorResponseException(ProblemDetail problemDetail) {
     super(problemDetail, ERROR_TYPE);
   }
 
   @JsonCreator
-  private ServerErrorResponseException(
+  private InternalServerErrorResponseException(
       @JsonProperty("type") URI type,
       @JsonProperty("title") String title,
       @JsonProperty("status") int status,
@@ -50,15 +51,9 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
 
   public static final class Builder {
 
-    private String title;
     private String detail;
 
     private Builder() {
-    }
-
-    public Builder title(String title) {
-      this.title = title;
-      return this;
     }
 
     public Builder detail(String detail) {
@@ -66,8 +61,8 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
       return this;
     }
 
-    public ServerErrorResponseException build() {
-      return new ServerErrorResponseException(buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null));
+    public InternalServerErrorResponseException build() {
+      return new InternalServerErrorResponseException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null));
     }
   }
 }

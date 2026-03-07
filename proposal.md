@@ -115,12 +115,12 @@ classDiagram
         +getErrors(): List~ValidationError~
     }
 
-    class UnauthorizedAccessErrorResponseException {
+    class InvalidTokenAccessErrorResponseException {
         <<final>>
         +getCode(): AccessErrorCode
     }
 
-    class ServerErrorResponseException {
+    class InternalServerErrorResponseException {
         <<final>>
     }
 
@@ -128,8 +128,8 @@ classDiagram
     ApiErrorResponseException <|-- TransferLimitExceededException
     ApiErrorResponseException <|-- AccountSuspendedException
     ApiErrorResponseException <|-- ValidationErrorResponseException
-    ApiErrorResponseException <|-- UnauthorizedAccessErrorResponseException
-    ApiErrorResponseException <|-- ServerErrorResponseException
+    ApiErrorResponseException <|-- InvalidTokenAccessErrorResponseException
+    ApiErrorResponseException <|-- InternalServerErrorResponseException
 
     TransferLimitExceededException *-- TransferLimitExceededAttributes
     AccountSuspendedException *-- AccountSuspendedAttributes
@@ -192,14 +192,18 @@ structure AccessApiErrorException with [ApiErrorException] {
 
 @error("client")
 @httpError(401)
-structure UnauthorizedAccessApiErrorException with [AccessApiErrorException] {
-    @const("Unauthorized")
+structure InvalidTokenAccessApiErrorException with [AccessApiErrorException] {
+    @const("Access Error")
     @required
     title: String
 
     @const(401)
     @required
     status: Integer
+
+    @const("Invalid Token")
+    @required
+    detail: String
 
     @const("unauthorized")
     @required
@@ -254,7 +258,11 @@ structure TransferLimitExceededDomainApiErrorException with [DomainApiErrorExcep
     @required
     status: Integer
 
-    @const("TRANSFER_LIMIT_EXCEEDED")
+    @const("Transfer Limit has been exceeded")
+    @required
+    detail: String
+
+    @const("transfer.transfer_limit_exceeded")
     @required
     code: String
 
@@ -355,17 +363,17 @@ Json example for Validation Error:
     "instance": "/api/v1/users",
     "errors": [
         {
-            code: "invalid_format"
-            detail: "Email must be a valid email address"
-            ref: "email"
-            attributes: {
-                pattern: "^[a-zA-Z0-9]+$"
+            "code": "invalid_format",
+            "detail": "Email must be a valid email address",
+            "ref": "email",
+            "attributes": {
+                "pattern": "^[a-zA-Z0-9]+$"
             }
         },
         {
-            code: "missing_value",
-            detail: "Name is required",
-            ref: "name"
+            "code": "missing_value",
+            "detail": "Name is required",
+            "ref": "name"
         }
     ]
 }
@@ -559,6 +567,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
+  private static final String DETAIL = "Transfer Limit has been exceeded";
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
@@ -615,15 +624,9 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
 
   public static final class Builder {
 
-    private String detail;
     private TransferLimitExceededAttributes attributes;
 
     private Builder() {
-    }
-
-    public Builder detail(String detail) {
-      this.detail = detail;
-      return this;
     }
 
     public Builder attributes(TransferLimitExceededAttributes attributes) {
@@ -634,7 +637,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
     public TransferLimitExceededException build() {
       Objects.requireNonNull(attributes, "attributes is required");
       return new TransferLimitExceededException(
-          buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null, CODE, attributes));
+          buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, DETAIL, null, CODE, attributes));
     }
   }
 }
@@ -677,7 +680,6 @@ public record TransferLimitExceededAttributes(BigDecimal amount, String currency
 Usage example:
 ```java
 throw TransferLimitExceededException.builder()
-    .detail("Your transfer exceeds the daily limit")
     .attributes(TransferLimitExceededAttributes.builder()
         .amount(new BigDecimal("15000.00"))
         .currency("USD")
@@ -689,7 +691,7 @@ throw TransferLimitExceededException.builder()
 //   "type": "/errors/types/domain",
 //   "title": "Transfer Limit Exceeded",
 //   "status": 422,
-//   "detail": "Your transfer exceeds the daily limit",
+//   "detail": "Transfer Limit has been exceeded",
 //   "code": "transfer.transfer_limit_exceeded",
 //   "attributes": {
 //     "amount": 15000.00,
@@ -976,7 +978,7 @@ throw ValidationErrorResponseException.builder()
 ```
 
 ### Access Errors
-Access errors handle authentication and authorization failures. They include a typed error code similar to domain errors:
+Access errors handle authentication and authorization failures. They include a typed error code and have all values defined as static constants:
 
 ```java
 public enum AccessErrorCode implements ErrorCode {
@@ -1011,20 +1013,22 @@ public enum AccessErrorCode implements ErrorCode {
 ```
 
 ```java
-public final class UnauthorizedAccessErrorResponseException extends ApiErrorResponseException {
+public final class InvalidTokenAccessErrorResponseException extends ApiErrorResponseException {
 
-  private static final String ERROR_TYPE = "UnauthorizedAccessErrorResponseException";
+  private static final String ERROR_TYPE = "InvalidTokenAccessErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/access");
+  private static final String TITLE = "Access Error";
+  private static final String DETAIL = "Invalid Token";
   private static final AccessErrorCode CODE = AccessErrorCode.UNAUTHORIZED;
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
   private static final String CODE_PROPERTY = "code";
 
-  private UnauthorizedAccessErrorResponseException(ProblemDetail problemDetail) {
+  private InvalidTokenAccessErrorResponseException(ProblemDetail problemDetail) {
     super(problemDetail, ERROR_TYPE);
   }
 
   @JsonCreator
-  private UnauthorizedAccessErrorResponseException(
+  private InvalidTokenAccessErrorResponseException(
       @JsonProperty("type") URI type,
       @JsonProperty("title") String title,
       @JsonProperty("status") int status,
@@ -1062,25 +1066,12 @@ public final class UnauthorizedAccessErrorResponseException extends ApiErrorResp
 
   public static final class Builder {
 
-    private String title;
-    private String detail;
-
     private Builder() {
     }
 
-    public Builder title(String title) {
-      this.title = title;
-      return this;
-    }
-
-    public Builder detail(String detail) {
-      this.detail = detail;
-      return this;
-    }
-
-    public UnauthorizedAccessErrorResponseException build() {
-      return new UnauthorizedAccessErrorResponseException(
-          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null, CODE));
+    public InvalidTokenAccessErrorResponseException build() {
+      return new InvalidTokenAccessErrorResponseException(
+          buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, DETAIL, null, CODE));
     }
   }
 }
@@ -1088,37 +1079,35 @@ public final class UnauthorizedAccessErrorResponseException extends ApiErrorResp
 
 Usage example:
 ```java
-throw UnauthorizedAccessErrorResponseException.builder()
-    .title("Unauthorized")
-    .detail("Invalid or expired token")
-    .build();
+throw InvalidTokenAccessErrorResponseException.builder().build();
 
 // JSON Response:
 // {
 //   "type": "/errors/types/access",
-//   "title": "Unauthorized",
+//   "title": "Access Error",
 //   "status": 401,
-//   "detail": "Invalid or expired token",
+//   "detail": "Invalid Token",
 //   "code": "unauthorized"
 // }
 ```
 
 ### Server Errors
-Server errors handle internal server failures:
+Server errors handle internal server failures. The title is a static constant:
 
 ```java
-public final class ServerErrorResponseException extends ApiErrorResponseException {
+public final class InternalServerErrorResponseException extends ApiErrorResponseException {
 
-  private static final String ERROR_TYPE = "ServerErrorResponseException";
+  private static final String ERROR_TYPE = "InternalServerErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/server");
+  private static final String TITLE = "Internal Server Error";
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  private ServerErrorResponseException(ProblemDetail problemDetail) {
+  private InternalServerErrorResponseException(ProblemDetail problemDetail) {
     super(problemDetail, ERROR_TYPE);
   }
 
   @JsonCreator
-  private ServerErrorResponseException(
+  private InternalServerErrorResponseException(
       @JsonProperty("type") URI type,
       @JsonProperty("title") String title,
       @JsonProperty("status") int status,
@@ -1148,15 +1137,9 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
 
   public static final class Builder {
 
-    private String title;
     private String detail;
 
     private Builder() {
-    }
-
-    public Builder title(String title) {
-      this.title = title;
-      return this;
     }
 
     public Builder detail(String detail) {
@@ -1164,9 +1147,9 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
       return this;
     }
 
-    public ServerErrorResponseException build() {
-      return new ServerErrorResponseException(
-          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null));
+    public InternalServerErrorResponseException build() {
+      return new InternalServerErrorResponseException(
+          buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null));
     }
   }
 }
@@ -1174,8 +1157,7 @@ public final class ServerErrorResponseException extends ApiErrorResponseExceptio
 
 Usage example:
 ```java
-throw ServerErrorResponseException.builder()
-    .title("Internal Server Error")
+throw InternalServerErrorResponseException.builder()
     .detail("Database connection failed")
     .build();
 
@@ -1199,8 +1181,8 @@ public class ApiErrorResponseDeserializer {
           "TransferLimitExceededException", TransferLimitExceededException.class,
           "AccountSuspendedException", AccountSuspendedException.class,
           "ValidationErrorResponseException", ValidationErrorResponseException.class,
-          "UnauthorizedAccessErrorResponseException", UnauthorizedAccessErrorResponseException.class,
-          "ServerErrorResponseException", ServerErrorResponseException.class
+          "InvalidTokenAccessErrorResponseException", InvalidTokenAccessErrorResponseException.class,
+          "InternalServerErrorResponseException", InternalServerErrorResponseException.class
       );
 
   private final ObjectMapper objectMapper;
@@ -1255,7 +1237,7 @@ exception/
 ├── ErrorCode.java                       # Error code interface
 ├── access/
 │   ├── AccessErrorCode.java
-│   └── UnauthorizedAccessErrorResponseException.java
+│   └── InvalidTokenAccessErrorResponseException.java
 ├── domain/
 │   ├── AccountErrorCode.java
 │   ├── AccountSuspendedAttributes.java
@@ -1265,7 +1247,7 @@ exception/
 │   ├── TransferLimitExceededAttributes.java
 │   └── TransferLimitExceededException.java
 ├── server/
-│   └── ServerErrorResponseException.java
+│   └── InternalServerErrorResponseException.java
 └── validation/
     ├── InvalidFormatAttributes.java
     ├── InvalidFormatValidationError.java
