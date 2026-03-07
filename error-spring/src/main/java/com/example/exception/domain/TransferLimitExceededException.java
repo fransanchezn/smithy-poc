@@ -18,6 +18,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final TransferErrorCode CODE = TransferErrorCode.TRANSFER_LIMIT_EXCEEDED;
   private static final String TITLE = "Transfer Limit Exceeded";
+  private static final String DETAIL = "Transfer Limit has been exceeded";
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
@@ -72,16 +73,9 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
   }
 
   public static final class Builder {
-
-    private String detail;
     private TransferLimitExceededAttributes attributes;
 
     private Builder() {
-    }
-
-    public Builder detail(String detail) {
-      this.detail = detail;
-      return this;
     }
 
     public Builder attributes(TransferLimitExceededAttributes attributes) {
@@ -91,7 +85,7 @@ public final class TransferLimitExceededException extends ApiErrorResponseExcept
 
     public TransferLimitExceededException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new TransferLimitExceededException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null, CODE, attributes));
+      return new TransferLimitExceededException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, DETAIL, null, CODE, attributes));
     }
   }
 }

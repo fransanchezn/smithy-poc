@@ -1,6 +1,6 @@
 package com.example.exception;
 
-import com.example.exception.access.UnauthorizedAccessErrorResponseException;
+import com.example.exception.access.InvalidTokenAccessErrorResponseException;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.TransferLimitExceededException;
 import com.example.exception.server.ServerErrorResponseException;
@@ -20,7 +20,7 @@ public class ApiErrorResponseDeserializer {
           "TransferLimitExceededException", TransferLimitExceededException.class,
           "AccountSuspendedException", AccountSuspendedException.class,
           "ValidationErrorResponseException", ValidationErrorResponseException.class,
-          "UnauthorizedAccessErrorResponseException", UnauthorizedAccessErrorResponseException.class,
+          "InvalidTokenAccessErrorResponseException", InvalidTokenAccessErrorResponseException.class,
           "ServerErrorResponseException", ServerErrorResponseException.class
       );
 

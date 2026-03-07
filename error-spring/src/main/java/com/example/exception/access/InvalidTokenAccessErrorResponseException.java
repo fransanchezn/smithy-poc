@@ -11,20 +11,22 @@ import org.springframework.http.ProblemDetail;
 /**
  * Exception for access-related errors (authentication, authorization).
  */
-public final class UnauthorizedAccessErrorResponseException extends ApiErrorResponseException {
+public final class InvalidTokenAccessErrorResponseException extends ApiErrorResponseException {
 
-  private static final String ERROR_TYPE = "UnauthorizedAccessErrorResponseException";
+  private static final String ERROR_TYPE = "InvalidTokenAccessErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/access");
+  private static final String TITLE = "Access Error";
+  private static final String DETAILS = "Invalid Token";
   private static final AccessErrorCode CODE = AccessErrorCode.UNAUTHORIZED;
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
   private static final String CODE_PROPERTY = "code";
 
-  private UnauthorizedAccessErrorResponseException(ProblemDetail problemDetail) {
+  private InvalidTokenAccessErrorResponseException(ProblemDetail problemDetail) {
     super(problemDetail, ERROR_TYPE);
   }
 
   @JsonCreator
-  private UnauthorizedAccessErrorResponseException(
+  private InvalidTokenAccessErrorResponseException(
       @JsonProperty("type") URI type,
       @JsonProperty("title") String title,
       @JsonProperty("status") int status,
@@ -62,24 +64,11 @@ public final class UnauthorizedAccessErrorResponseException extends ApiErrorResp
 
   public static final class Builder {
 
-    private String title;
-    private String detail;
-
     private Builder() {
     }
 
-    public Builder title(String title) {
-      this.title = title;
-      return this;
-    }
-
-    public Builder detail(String detail) {
-      this.detail = detail;
-      return this;
-    }
-
-    public UnauthorizedAccessErrorResponseException build() {
-      return new UnauthorizedAccessErrorResponseException(buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null, CODE));
+    public InvalidTokenAccessErrorResponseException build() {
+      return new InvalidTokenAccessErrorResponseException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, DETAILS, null, CODE));
     }
   }
 }

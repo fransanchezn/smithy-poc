@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.exception.access.AccessErrorCode;
-import com.example.exception.access.UnauthorizedAccessErrorResponseException;
+import com.example.exception.access.InvalidTokenAccessErrorResponseException;
 import com.example.exception.domain.AccountSuspendedAttributes;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.TransferLimitExceededAttributes;
@@ -42,28 +42,24 @@ class ExceptionSerializationTest {
   class AccessExceptionTest {
 
     @Test
-    void shouldSerializeAndDeserializeAccessException() throws Exception {
-      UnauthorizedAccessErrorResponseException original = UnauthorizedAccessErrorResponseException.builder()
-          .title("Unauthorized")
-          .detail("Invalid token")
+    void shouldSerializeAndDeserializeAccessException() {
+      InvalidTokenAccessErrorResponseException original = InvalidTokenAccessErrorResponseException.builder()
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      UnauthorizedAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      InvalidTokenAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
-      assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
+      assertThat(deserialized.getTitle()).isEqualTo("Access Error");
       assertThat(deserialized.getStatus()).isEqualTo(401);
-      assertThat(deserialized.getDetail()).isEqualTo("Invalid token");
+      assertThat(deserialized.getDetail()).isEqualTo("Invalid Token");
       assertThat(deserialized.getCode()).isEqualTo(AccessErrorCode.UNAUTHORIZED);
     }
 
     @Test
     void shouldHaveCorrectStatusCode() {
-      UnauthorizedAccessErrorResponseException exception = UnauthorizedAccessErrorResponseException.builder()
-          .title("Unauthorized")
-          .detail("test")
+      InvalidTokenAccessErrorResponseException exception = InvalidTokenAccessErrorResponseException.builder()
           .build();
 
       assertThat(exception.getStatusCode().value()).isEqualTo(401);
@@ -71,13 +67,11 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldHaveErrorTypeHeader() {
-      UnauthorizedAccessErrorResponseException exception = UnauthorizedAccessErrorResponseException.builder()
-          .title("Unauthorized")
-          .detail("test")
+      InvalidTokenAccessErrorResponseException exception = InvalidTokenAccessErrorResponseException.builder()
           .build();
 
       assertThat(exception.getHeaders().getFirst("x-error-type"))
-          .isEqualTo("UnauthorizedAccessErrorResponseException");
+          .isEqualTo("InvalidTokenAccessErrorResponseException");
     }
   }
 
@@ -85,7 +79,7 @@ class ExceptionSerializationTest {
   class ServerExceptionTest {
 
     @Test
-    void shouldSerializeAndDeserializeServerErrorException() throws Exception {
+    void shouldSerializeAndDeserializeServerErrorException() {
       ServerErrorResponseException original = ServerErrorResponseException.builder()
           .title("Internal Server Error")
           .detail("Database connection failed")
@@ -127,9 +121,8 @@ class ExceptionSerializationTest {
   class DomainExceptionTest {
 
     @Test
-    void shouldSerializeAndDeserializeTransferLimitExceededException() throws Exception {
+    void shouldSerializeAndDeserializeTransferLimitExceededException() {
       TransferLimitExceededException original = TransferLimitExceededException.builder()
-          .detail("Your transfer exceeds the daily limit")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("50000.00"))
               .currency("EUR")
@@ -143,16 +136,15 @@ class ExceptionSerializationTest {
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
       assertThat(deserialized.getTitle()).isEqualTo("Transfer Limit Exceeded");
       assertThat(deserialized.getStatus()).isEqualTo(422);
-      assertThat(deserialized.getDetail()).isEqualTo("Your transfer exceeds the daily limit");
+      assertThat(deserialized.getDetail()).isEqualTo("Transfer Limit has been exceeded");
       assertThat(deserialized.getCode().getCode()).isEqualTo("transfer.transfer_limit_exceeded");
       assertThat(deserialized.getAttributes().amount()).isEqualByComparingTo("50000.00");
       assertThat(deserialized.getAttributes().currency()).isEqualTo("EUR");
     }
 
     @Test
-    void shouldSerializeAndDeserializeAccountSuspendedException() throws Exception {
+    void shouldSerializeAndDeserializeAccountSuspendedException() {
       AccountSuspendedException original = AccountSuspendedException.builder()
-          .detail("Account access denied")
           .attributes(AccountSuspendedAttributes.builder()
               .reason("Multiple failed login attempts")
               .build())
@@ -165,7 +157,7 @@ class ExceptionSerializationTest {
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/domain"));
       assertThat(deserialized.getTitle()).isEqualTo("Account Suspended");
       assertThat(deserialized.getStatus()).isEqualTo(422);
-      assertThat(deserialized.getDetail()).isEqualTo("Account access denied");
+      assertThat(deserialized.getDetail()).isEqualTo("Account has been suspended");
       assertThat(deserialized.getCode().getCode()).isEqualTo("account.account_suspended");
       assertThat(deserialized.getAttributes().reason()).isEqualTo("Multiple failed login attempts");
     }
@@ -173,7 +165,6 @@ class ExceptionSerializationTest {
     @Test
     void shouldProvideTypedAccessToAttributes() {
       TransferLimitExceededException exception = TransferLimitExceededException.builder()
-          .detail("Test")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("1000"))
               .currency("USD")
@@ -188,7 +179,6 @@ class ExceptionSerializationTest {
     @Test
     void shouldHaveErrorTypeHeader() {
       TransferLimitExceededException exception = TransferLimitExceededException.builder()
-          .detail("Test")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("1000"))
               .currency("USD")
@@ -204,7 +194,7 @@ class ExceptionSerializationTest {
   class ValidationExceptionTest {
 
     @Test
-    void shouldSerializeAndDeserializeInvalidFormatErrors() throws Exception {
+    void shouldSerializeAndDeserializeInvalidFormatErrors() {
       ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Email format is invalid")
@@ -241,7 +231,7 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldSerializeAndDeserializeMissingValueErrors() throws Exception {
+    void shouldSerializeAndDeserializeMissingValueErrors() {
       ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(MissingValueValidationError.builder()
               .detail("First name is required")
@@ -276,7 +266,7 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldSerializeAndDeserializeMixedErrors() throws Exception {
+    void shouldSerializeAndDeserializeMixedErrors() {
       ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Invalid email")
@@ -304,7 +294,7 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldProvideTypedAccessToErrorsAfterDeserialization() throws Exception {
+    void shouldProvideTypedAccessToErrorsAfterDeserialization() {
       ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Invalid email")
@@ -346,9 +336,8 @@ class ExceptionSerializationTest {
   class RoundTripTest {
 
     @Test
-    void shouldRoundTripDomainException() throws Exception {
+    void shouldRoundTripDomainException() {
       TransferLimitExceededException original = TransferLimitExceededException.builder()
-          .detail("Transfer limit exceeded")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("25000"))
               .currency("GBP")
@@ -369,7 +358,7 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldRoundTripValidationException() throws Exception {
+    void shouldRoundTripValidationException() {
       ValidationErrorResponseException original = ValidationErrorResponseException.builder()
           .error(InvalidFormatValidationError.builder()
               .detail("Invalid format")
@@ -396,15 +385,13 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldRoundTripAccessException() throws Exception {
-      UnauthorizedAccessErrorResponseException original = UnauthorizedAccessErrorResponseException.builder()
-          .title("Forbidden")
-          .detail("Access denied")
+    void shouldRoundTripAccessException() {
+      InvalidTokenAccessErrorResponseException original = InvalidTokenAccessErrorResponseException.builder()
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      UnauthorizedAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      InvalidTokenAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
       assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
@@ -414,7 +401,7 @@ class ExceptionSerializationTest {
     }
 
     @Test
-    void shouldRoundTripServerException() throws Exception {
+    void shouldRoundTripServerException() {
       ServerErrorResponseException original = ServerErrorResponseException.builder()
           .title("Service Unavailable")
           .detail("Please try again later")
@@ -435,9 +422,8 @@ class ExceptionSerializationTest {
   class DeserializerApiTest {
 
     @Test
-    void shouldDeserializeDirectlyToSpecificClass() throws Exception {
+    void shouldDeserializeDirectlyToSpecificClass() {
       TransferLimitExceededException original = TransferLimitExceededException.builder()
-          .detail("Test")
           .attributes(TransferLimitExceededAttributes.builder()
               .amount(new BigDecimal("1000"))
               .currency("USD")

@@ -18,6 +18,7 @@ public final class AccountSuspendedException extends ApiErrorResponseException {
   private static final URI TYPE = URI.create("/errors/types/domain");
   private static final AccountErrorCode CODE = AccountErrorCode.ACCOUNT_SUSPENDED;
   private static final String TITLE = "Account Suspended";
+  private static final String DETAIL = "Account has been suspended";
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNPROCESSABLE_CONTENT;
   private static final String CODE_PROPERTY = "code";
   private static final String ATTRIBUTES_PROPERTY = "attributes";
@@ -73,15 +74,9 @@ public final class AccountSuspendedException extends ApiErrorResponseException {
 
   public static final class Builder {
 
-    private String detail;
     private AccountSuspendedAttributes attributes;
 
     private Builder() {
-    }
-
-    public Builder detail(String detail) {
-      this.detail = detail;
-      return this;
     }
 
     public Builder attributes(AccountSuspendedAttributes attributes) {
@@ -91,7 +86,7 @@ public final class AccountSuspendedException extends ApiErrorResponseException {
 
     public AccountSuspendedException build() {
       Objects.requireNonNull(attributes, "attributes is required");
-      return new AccountSuspendedException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, detail, null, CODE, attributes));
+      return new AccountSuspendedException(buildProblemDetail(TYPE, TITLE, DEFAULT_STATUS, DETAIL, null, CODE, attributes));
     }
   }
 }
