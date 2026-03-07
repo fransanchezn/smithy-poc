@@ -115,8 +115,9 @@ classDiagram
         +getErrors(): List~ValidationError~
     }
 
-    class AccessErrorResponseException {
+    class UnauthorizedAccessErrorResponseException {
         <<final>>
+        +getCode(): AccessErrorCode
     }
 
     class ServerErrorResponseException {
@@ -127,7 +128,7 @@ classDiagram
     ApiErrorResponseException <|-- TransferLimitExceededException
     ApiErrorResponseException <|-- AccountSuspendedException
     ApiErrorResponseException <|-- ValidationErrorResponseException
-    ApiErrorResponseException <|-- AccessErrorResponseException
+    ApiErrorResponseException <|-- UnauthorizedAccessErrorResponseException
     ApiErrorResponseException <|-- ServerErrorResponseException
 
     TransferLimitExceededException *-- TransferLimitExceededAttributes
@@ -171,7 +172,40 @@ structure ApiErrorException {
 }
 ```
 ### Access errors structure
-[TBD] - Should follow a very similar structure to domain errors
+Access errors follow a similar pattern to domain errors with a typed error code:
+
+```smithy
+// --------- Access Error ---------
+@trait
+structure accessError {}
+
+@mixin
+@accessError
+structure AccessApiErrorException with [ApiErrorException] {
+    @const("/errors/types/access")
+    @required
+    type: String
+
+    @required
+    code: String
+}
+
+@error("client")
+@httpError(401)
+structure UnauthorizedAccessApiErrorException with [AccessApiErrorException] {
+    @const("Unauthorized")
+    @required
+    title: String
+
+    @const(401)
+    @required
+    status: Integer
+
+    @const("unauthorized")
+    @required
+    code: String
+}
+```
 
 ### Server errors structure
 [TBD] - Should follow a very similar structure to domain errors
@@ -942,36 +976,77 @@ throw ValidationErrorResponseException.builder()
 ```
 
 ### Access Errors
-Access errors handle authentication and authorization failures:
+Access errors handle authentication and authorization failures. They include a typed error code similar to domain errors:
 
 ```java
-public final class AccessErrorResponseException extends ApiErrorResponseException {
+public enum AccessErrorCode implements ErrorCode {
 
-  private static final String ERROR_TYPE = "AccessErrorResponseException";
+  UNAUTHORIZED("unauthorized");
+
+  private final String code;
+
+  AccessErrorCode(String code) {
+    this.code = code;
+  }
+
+  @Override
+  public String getCode() {
+    return code;
+  }
+
+  @Override
+  public String toString() {
+    return code;
+  }
+
+  public static AccessErrorCode valueOfCode(String code) {
+    for (AccessErrorCode errorCode : values()) {
+      if (errorCode.getCode().equals(code)) {
+        return errorCode;
+      }
+    }
+    throw new IllegalArgumentException("No enum constant with code: " + code);
+  }
+}
+```
+
+```java
+public final class UnauthorizedAccessErrorResponseException extends ApiErrorResponseException {
+
+  private static final String ERROR_TYPE = "UnauthorizedAccessErrorResponseException";
   private static final URI TYPE = URI.create("/errors/types/access");
+  private static final AccessErrorCode CODE = AccessErrorCode.UNAUTHORIZED;
   private static final HttpStatus DEFAULT_STATUS = HttpStatus.UNAUTHORIZED;
+  private static final String CODE_PROPERTY = "code";
 
-  private AccessErrorResponseException(ProblemDetail problemDetail) {
+  private UnauthorizedAccessErrorResponseException(ProblemDetail problemDetail) {
     super(problemDetail, ERROR_TYPE);
   }
 
   @JsonCreator
-  private AccessErrorResponseException(
+  private UnauthorizedAccessErrorResponseException(
       @JsonProperty("type") URI type,
       @JsonProperty("title") String title,
       @JsonProperty("status") int status,
       @JsonProperty("detail") String detail,
-      @JsonProperty("instance") String instance) {
-    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance),
-        ERROR_TYPE);
+      @JsonProperty("instance") String instance,
+      @JsonProperty("code") String code) {
+    super(buildProblemDetail(type, title, HttpStatus.valueOf(status), detail, instance,
+        code != null ? AccessErrorCode.valueOfCode(code) : CODE), ERROR_TYPE);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
+  public AccessErrorCode getCode() {
+    return Optional.ofNullable(getBody().getProperties())
+        .map(props -> (AccessErrorCode) props.get(CODE_PROPERTY))
+        .orElse(CODE);
+  }
+
   private static ProblemDetail buildProblemDetail(URI type, String title, HttpStatus status,
-      String detail, String instance) {
+      String detail, String instance, AccessErrorCode code) {
     ProblemDetail problemDetail = ProblemDetail.forStatus(status);
     problemDetail.setType(type != null ? type : TYPE);
     problemDetail.setTitle(title);
@@ -981,6 +1056,7 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
     if (instance != null) {
       problemDetail.setInstance(URI.create(instance));
     }
+    problemDetail.setProperty(CODE_PROPERTY, code != null ? code : CODE);
     return problemDetail;
   }
 
@@ -1002,9 +1078,9 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
       return this;
     }
 
-    public AccessErrorResponseException build() {
-      return new AccessErrorResponseException(
-          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null));
+    public UnauthorizedAccessErrorResponseException build() {
+      return new UnauthorizedAccessErrorResponseException(
+          buildProblemDetail(TYPE, title, DEFAULT_STATUS, detail, null, CODE));
     }
   }
 }
@@ -1012,7 +1088,7 @@ public final class AccessErrorResponseException extends ApiErrorResponseExceptio
 
 Usage example:
 ```java
-throw AccessErrorResponseException.builder()
+throw UnauthorizedAccessErrorResponseException.builder()
     .title("Unauthorized")
     .detail("Invalid or expired token")
     .build();
@@ -1022,7 +1098,8 @@ throw AccessErrorResponseException.builder()
 //   "type": "/errors/types/access",
 //   "title": "Unauthorized",
 //   "status": 401,
-//   "detail": "Invalid or expired token"
+//   "detail": "Invalid or expired token",
+//   "code": "unauthorized"
 // }
 ```
 
@@ -1122,7 +1199,7 @@ public class ApiErrorResponseDeserializer {
           "TransferLimitExceededException", TransferLimitExceededException.class,
           "AccountSuspendedException", AccountSuspendedException.class,
           "ValidationErrorResponseException", ValidationErrorResponseException.class,
-          "AccessErrorResponseException", AccessErrorResponseException.class,
+          "UnauthorizedAccessErrorResponseException", UnauthorizedAccessErrorResponseException.class,
           "ServerErrorResponseException", ServerErrorResponseException.class
       );
 
@@ -1177,7 +1254,8 @@ exception/
 ├── ErrorAttributes.java                 # Marker interface
 ├── ErrorCode.java                       # Error code interface
 ├── access/
-│   └── AccessErrorResponseException.java
+│   ├── AccessErrorCode.java
+│   └── UnauthorizedAccessErrorResponseException.java
 ├── domain/
 │   ├── AccountErrorCode.java
 │   ├── AccountSuspendedAttributes.java

@@ -3,7 +3,8 @@ package com.example.exception;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.exception.access.AccessErrorResponseException;
+import com.example.exception.access.AccessErrorCode;
+import com.example.exception.access.UnauthorizedAccessErrorResponseException;
 import com.example.exception.domain.AccountSuspendedAttributes;
 import com.example.exception.domain.AccountSuspendedException;
 import com.example.exception.domain.TransferLimitExceededAttributes;
@@ -42,24 +43,25 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldSerializeAndDeserializeAccessException() throws Exception {
-      AccessErrorResponseException original = AccessErrorResponseException.builder()
+      UnauthorizedAccessErrorResponseException original = UnauthorizedAccessErrorResponseException.builder()
           .title("Unauthorized")
           .detail("Invalid token")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      AccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      UnauthorizedAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(URI.create("/errors/types/access"));
       assertThat(deserialized.getTitle()).isEqualTo("Unauthorized");
       assertThat(deserialized.getStatus()).isEqualTo(401);
       assertThat(deserialized.getDetail()).isEqualTo("Invalid token");
+      assertThat(deserialized.getCode()).isEqualTo(AccessErrorCode.UNAUTHORIZED);
     }
 
     @Test
     void shouldHaveCorrectStatusCode() {
-      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+      UnauthorizedAccessErrorResponseException exception = UnauthorizedAccessErrorResponseException.builder()
           .title("Unauthorized")
           .detail("test")
           .build();
@@ -69,13 +71,13 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldHaveErrorTypeHeader() {
-      AccessErrorResponseException exception = AccessErrorResponseException.builder()
+      UnauthorizedAccessErrorResponseException exception = UnauthorizedAccessErrorResponseException.builder()
           .title("Unauthorized")
           .detail("test")
           .build();
 
       assertThat(exception.getHeaders().getFirst("x-error-type"))
-          .isEqualTo("AccessErrorResponseException");
+          .isEqualTo("UnauthorizedAccessErrorResponseException");
     }
   }
 
@@ -395,19 +397,20 @@ class ExceptionSerializationTest {
 
     @Test
     void shouldRoundTripAccessException() throws Exception {
-      AccessErrorResponseException original = AccessErrorResponseException.builder()
+      UnauthorizedAccessErrorResponseException original = UnauthorizedAccessErrorResponseException.builder()
           .title("Forbidden")
           .detail("Access denied")
           .build();
 
       String json = objectMapper.writeValueAsString(original.getBody());
       String errorType = original.getHeaders().getFirst("x-error-type");
-      AccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
+      UnauthorizedAccessErrorResponseException deserialized = deserializer.deserialize(json, errorType);
 
       assertThat(deserialized.getType()).isEqualTo(original.getType());
       assertThat(deserialized.getTitle()).isEqualTo(original.getTitle());
       assertThat(deserialized.getStatus()).isEqualTo(original.getStatus());
       assertThat(deserialized.getDetail()).isEqualTo(original.getDetail());
+      assertThat(deserialized.getCode()).isEqualTo(original.getCode());
     }
 
     @Test
