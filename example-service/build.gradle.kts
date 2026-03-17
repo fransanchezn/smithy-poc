@@ -4,6 +4,7 @@ plugins {
 }
 
 val smithyVersion: String by project
+val alloyVersion: String by project
 
 // The smithy-base plugin creates a 'smithyBuild' configuration
 val smithyBuild by configurations.getting
@@ -22,10 +23,11 @@ sourceSets {
 
 dependencies {
     implementation("software.amazon.smithy:smithy-model:$smithyVersion")
-    implementation("software.amazon.smithy:smithy-aws-traits:$smithyVersion")
+    implementation("com.disneystreaming.alloy:alloy-core:$alloyVersion")
     implementation(project(":error-trait"))
 
     smithyBuild(project(":error-trait"))
     smithyBuild("software.amazon.smithy:smithy-openapi:$smithyVersion")
-    smithyBuild("software.amazon.smithy:smithy-aws-traits:$smithyVersion")
+    smithyBuild("com.disneystreaming.alloy:alloy-core:$alloyVersion")
+    smithyBuild("com.disneystreaming.alloy:alloy-openapi_2.13:$alloyVersion")
 }

@@ -2,9 +2,9 @@ $version: "2"
 
 namespace com.example
 
-use aws.protocols#restJson1
+use alloy#simpleRestJson
 
-@restJson1
+@simpleRestJson
 @title("Example API")
 service ExampleService {
     version: "2024-01-01"

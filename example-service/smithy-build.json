@@ -6,7 +6,7 @@
             "plugins": {
                 "openapi": {
                     "service": "com.example#ExampleService",
-                    "protocol": "aws.protocols#restJson1",
+                    "protocol": "alloy#simpleRestJson",
                     "jsonContentType": "application/json",
                     "onErrorStatusConflict": "oneOf"
                 }
