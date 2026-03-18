@@ -2,6 +2,7 @@ $version: "2"
 
 namespace com.example
 
+use alloy#discriminated
 use alloy#simpleRestJson
 
 @simpleRestJson
@@ -9,20 +10,20 @@ use alloy#simpleRestJson
 service ExampleService {
     version: "2024-01-01"
     operations: [
-        ListUsers
-        GetUser
-        CreateUser
-        DeleteUser
+        ListProfiles
+        GetProfile
+        CreateProfile
+        DeleteProfile
     ]
 }
 
-// List all users
+// List all profiles
 @readonly
-@http(method: "GET", uri: "/users")
-operation ListUsers {
+@http(method: "GET", uri: "/profiles")
+operation ListProfiles {
     output := {
         @required
-        users: UserList
+        profiles: ProfileList
     }
 
     errors: [
@@ -33,10 +34,10 @@ operation ListUsers {
     ]
 }
 
-// Get a user by ID
+// Get a profile by ID
 @readonly
-@http(method: "GET", uri: "/users/{id}")
-operation GetUser {
+@http(method: "GET", uri: "/profiles/{id}")
+operation GetProfile {
     input := {
         @required
         @httpLabel
@@ -45,7 +46,7 @@ operation GetUser {
 
     output := {
         @required
-        user: User
+        profile: ProfileUnion
     }
 
     errors: [
@@ -57,9 +58,9 @@ operation GetUser {
     ]
 }
 
-// Create a new user
-@http(method: "POST", uri: "/users")
-operation CreateUser {
+// Create a new profile
+@http(method: "POST", uri: "/profile")
+operation CreateProfile {
     input := {
         @required
         name: String
@@ -70,7 +71,7 @@ operation CreateUser {
 
     output := {
         @required
-        user: User
+        profile: ProfileUnion
     }
 
     errors: [
@@ -82,10 +83,10 @@ operation CreateUser {
     ]
 }
 
-// Delete a user
+// Delete a Profile
 @idempotent
-@http(method: "DELETE", uri: "/users/{id}")
-operation DeleteUser {
+@http(method: "DELETE", uri: "/profiles/{id}")
+operation DeleteProfile {
     input := {
         @required
         @httpLabel
@@ -101,20 +102,29 @@ operation DeleteUser {
     ]
 }
 
-// User structure
-structure User {
-    @required
-    id: String
-
-    @required
-    name: String
-
-    @required
-    email: String
-
-    createdAt: Timestamp
+// Profile structure
+@discriminated("type")
+union ProfileUnion {
+    PERSONAL: PersonalProfile
+    BUSINESS: BusinessProfile
 }
 
-list UserList {
-    member: User
+structure PersonalProfile {
+    @required
+    firstName: String
+
+    @required
+    lastName: String
+}
+
+structure BusinessProfile {
+    @required
+    companyName: String
+
+    @required
+    registrationNumber: String
+}
+
+list ProfileList {
+    member: ProfileUnion
 }
